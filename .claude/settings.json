@@ -7,6 +7,31 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/pre-commit.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/commit-msg-check.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/secret-scan.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/prompt-guard.sh"
           }
         ]
       }
