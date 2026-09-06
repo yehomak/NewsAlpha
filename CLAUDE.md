@@ -68,7 +68,33 @@ Lint: `ruff check . && ruff format --check .`
 Types: `mypy app`
 Migrations: `alembic upgrade head`
 
+## Claude Code tooling
+
+All tooling is set up and merged to `main`:
+
+**Agents** (`.claude/agents/`)
+- `signal-dev` — LangGraph chain, Langfuse tracing, ticker resolver, eval rules
+- `code-reviewer` — async SQLAlchemy, Pydantic v2, LangGraph, Langfuse checklist
+- `db-migration-agent` — Alembic patterns, pgvector, safety guardrails
+- `eval-analyst` — T+5 design, segmentation, accuracy SQL queries
+
+**Skills** (`.claude/skills/`)
+- `langgraph-patterns` — state schema, node structure, graph assembly
+- `eval-design` — T+5 rules, look-ahead bias prevention, accuracy targets
+
+**Commands** (`.claude/commands/`)
+- `/commit` — conventional commits with ruff pre-flight
+- `/pr` — lint + mypy + test + structured PR description
+- `/migrate` — Alembic migration generation and apply
+- `/trace` — Langfuse trace lookup by signal_id or trace_id
+
+**Hooks** (`.claude/hooks/`)
+- `pre-commit.sh` — blocks commit if ruff/mypy fail
+- `commit-msg-check.sh` — validates conventional commit format
+- `secret-scan.sh` — scans written files for hardcoded secrets
+- `prompt-guard.sh` — blocks destructive DB operations without confirmation
+
 ## Current stage
 
-Stage 1 complete: skeleton running, schema migrated, CI green.
+Stage 1 complete: skeleton running, schema migrated, CI green, Claude Code tooling live.
 Next: Stage 2 — ingestion pipeline (feedparser + NewsAPI, APScheduler, dedup).
