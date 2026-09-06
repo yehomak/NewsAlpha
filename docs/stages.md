@@ -5,13 +5,15 @@ The eval harness (Stage 4) is the narrative anchor — everything else supports 
 ## Stage 1 — Foundation (Week 1)
 **Goal: skeleton that actually runs**
 
-- Docker Compose: FastAPI + PostgreSQL + Langfuse
+- Docker Compose: FastAPI + PostgreSQL (pgvector) + Langfuse
 - SQLAlchemy models: `events`, `signals`, `eval_results`, `price_snapshots`
-- Alembic migration setup
+- Alembic migration setup (indexes on `ticker/created_at`, `event_type`, `published_at`)
 - GitHub repo + GitHub Actions CI (ruff, mypy, pytest, Docker build — from day one)
-- `.gitignore` for local only or logs stuff
 - `.env` config, structured logging setup
 - FastAPI with `/health` endpoint
+- Claude Code tooling: agents, skills, commands, hooks — see `CLAUDE.md`
+
+**Status: complete.**
 
 **Why first:** everything else plugs into this. Don't start with LLM code.
 
