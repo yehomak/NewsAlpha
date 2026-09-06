@@ -37,6 +37,7 @@ def upgrade() -> None:
         sa.Column("processed", sa.Boolean, server_default="false", nullable=False),
     )
     op.create_index("ix_events_url_hash", "events", ["url_hash"], unique=True)
+    op.create_index("ix_events_published_at", "events", ["published_at"])
 
     op.create_table(
         "signals",
@@ -65,6 +66,8 @@ def upgrade() -> None:
         sa.Column("langfuse_trace_id", sa.String(128)),
     )
     op.create_index("ix_signals_ticker", "signals", ["ticker"])
+    op.create_index("ix_signals_ticker_created_at", "signals", ["ticker", "created_at"])
+    op.create_index("ix_signals_event_type", "signals", ["event_type"])
 
     op.create_table(
         "eval_results",
@@ -99,8 +102,11 @@ def downgrade() -> None:
     op.drop_table("price_snapshots")
     op.drop_index("ix_eval_results_signal_id", "eval_results")
     op.drop_table("eval_results")
+    op.drop_index("ix_signals_event_type", "signals")
+    op.drop_index("ix_signals_ticker_created_at", "signals")
     op.drop_index("ix_signals_ticker", "signals")
     op.drop_table("signals")
+    op.drop_index("ix_events_published_at", "events")
     op.drop_index("ix_events_url_hash", "events")
     op.drop_table("events")
     op.execute("DROP TYPE IF EXISTS direction")
