@@ -68,6 +68,8 @@ VALID_TICKERS: frozenset[str] = frozenset(
         "EPAM",
         "OKTA",
         # Consumer Discretionary
+        "LULU",
+        "TGT",
         "AMZN",
         "TSLA",
         "HD",
@@ -152,6 +154,8 @@ VALID_TICKERS: frozenset[str] = frozenset(
         "COTY",
         "KVUE",
         # Healthcare
+        "LLY",
+        "MRNA",
         "JNJ",
         "UNH",
         "PFE",
