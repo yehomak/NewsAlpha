@@ -7,6 +7,7 @@ from app.pipeline.costs import compute_cost
 from app.pipeline.langfuse_client import get_langfuse
 from app.pipeline.state import SignalState
 from app.pipeline.ticker_whitelist import validate_ticker
+from app.pipeline.universe import SIGNAL_UNIVERSE_SET
 
 log = structlog.get_logger()
 
@@ -19,11 +20,12 @@ class TickerProposal(BaseModel):
 
 
 async def resolve_tickers(state: SignalState) -> dict:  # type: ignore[type-arg]
-    # Fast path: if ingestion already gave us a validated hint, use it
+    # Fast path: if ingestion already gave us a validated universe hint, use it
     for hint in state.get("ticker_hints", []):
-        if validate_ticker(hint):
-            log.info("resolve_tickers.hint_hit", ticker=hint, event_id=state["event_id"])
-            return {"ticker": hint}
+        normalized = hint.strip().upper()
+        if normalized in SIGNAL_UNIVERSE_SET:
+            log.info("resolve_tickers.hint_hit", ticker=normalized, event_id=state["event_id"])
+            return {"ticker": normalized}
 
     companies = state.get("companies", [])
     if not companies:
@@ -83,7 +85,8 @@ async def resolve_tickers(state: SignalState) -> dict:  # type: ignore[type-arg]
         return {"ticker": None, "total_cost_usd": float(state["total_cost_usd"] + float(cost))}
 
     proposal = TickerProposal.model_validate(tool_block.input)
-    validated = validate_ticker(proposal.ticker)
+    in_whitelist = validate_ticker(proposal.ticker)
+    validated = in_whitelist if (in_whitelist and in_whitelist in SIGNAL_UNIVERSE_SET) else None
 
     if gen:
         gen.end(
@@ -92,11 +95,15 @@ async def resolve_tickers(state: SignalState) -> dict:  # type: ignore[type-arg]
         )
 
     if validated is None:
-        log.warning("resolve_tickers.invalid", proposed=proposal.ticker, event_id=state["event_id"])
+        log.warning(
+            "resolve_tickers.out_of_universe",
+            proposed=proposal.ticker,
+            event_id=state["event_id"],
+        )
         return {
             "ticker": None,
             "total_cost_usd": float(state["total_cost_usd"] + float(cost)),
-            "error": f"ticker '{proposal.ticker}' not in whitelist",
+            "error": f"ticker '{proposal.ticker}' not in signal universe",
         }
 
     log.info("resolve_tickers.done", ticker=validated, event_id=state["event_id"])
