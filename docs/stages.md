@@ -22,13 +22,32 @@ The eval harness (Stage 4) is the narrative anchor — everything else supports 
 ## Stage 2 — Ingestion Pipeline (Week 1–2)
 **Goal: raw news flowing into the DB**
 
-- RSS feed parser (feedparser) — Reuters, Bloomberg, Yahoo Finance feeds
-- NewsAPI connector
-- Story deduplication — URL + title hash (semantic upgrade in Stage 6)
-- APScheduler job running every N hours
-- Store raw events in `events` table
+Sources (Reuters RSS dead since 2020; Bloomberg paywalled — both removed from original spec):
+- **Alpaca News API** (primary) — 200 req/min free, Benzinga-curated, pre-resolved ticker candidates, back to 2015. Best free financial news API.
+- **RSS via feedparser** — Yahoo Finance, CNBC, PR Newswire / GlobeNewswire sector feeds
+- **NewsData.io** (fallback) — 200 req/day free, commercial use OK in deployed env
+- **NewsAPI.org** — local dev only; production ToS blocks non-localhost, 1-month article age cap
 
-**Milestone:** DB fills with deduplicated news stories automatically.
+Body text note: RSS/feedparser returns 150–300 char truncated summaries, not full article body. Add **Trafilatura** fetch per event for full text. Also: design Stage 3 prompts to work on headline + 1-sentence summary as a fallback (some outlets block scrapers).
+
+Dedup — three layers:
+1. **URL hash**: SHA-256 of normalized URL (strip `?query`, lowercase, strip trailing `/`)
+2. **Time-domain**: same source domain + overlapping `ticker_hints` + ≤4hr window → suppress, increment `coverage_count`. Cheap wire-service duplicate filter before LLM calls.
+3. **Semantic**: pgvector cosine similarity on headline embeddings (Stage 6)
+
+Schema additions vs. original spec:
+- `ticker_hints` JSONB on Event — Alpaca pre-resolved candidates, fed to Stage 3 resolver as starting point
+- `coverage_count` int on Event — incremented on time-domain suppression; high count = market-moving story
+- Composite index `(processed, fetched_at)` — required for Stage 3 batch query performance
+
+Reliability:
+- tenacity retry: 3×, exponential backoff (1s→2s→4s), on HTTP 429/5xx; no retry on 404/401
+- Conditional GET: ETag + `If-Modified-Since` per feed (feedparser handles natively via `feed.etag` / `feed.modified`)
+- Article age filter: skip `published_at > now - 7 days` at ingest (stale news = noise for T+5 eval)
+
+APScheduler `AsyncIOScheduler` wired into FastAPI lifespan — single-worker only. Multi-worker deployment needs scheduler in a separate process or APScheduler 4.x (asyncio-native, beta).
+
+**Milestone:** DB fills with deduplicated news automatically; `coverage_count > 1` visible on wire-service duplicates; ticker_hints populated from Alpaca.
 
 ---
 
@@ -57,6 +76,8 @@ The eval harness (Stage 4) is the narrative anchor — everything else supports 
 **Milestone:** 50+ signals evaluated, accuracy number exists. This is the interview story.
 
 **Note:** segment by `event_type` (earnings / product_launch / macro / general) — earnings signals often invert post-announcement ("buy the rumor, sell the news"), which skews overall accuracy if unsegmented.
+
+**Add T+1 directional accuracy as a secondary metric alongside T+5.** T+1 will be measurably higher, showing the signal decay curve — the signal exists but gets absorbed as the market catches up. More interesting than a single T+5 number and shows domain understanding.
 
 ---
 

@@ -74,6 +74,44 @@ Key architectural decisions with rationale. Reference this when you forget why s
 
 ---
 
+## Alpaca News API over NewsAPI.org as primary source
+
+**Decision:** Alpaca News API (Benzinga partnership) as the primary financial news source. NewsAPI.org demoted to local dev only.
+
+**Why:** NewsAPI.org free tier blocks non-localhost requests in production (ToS restriction), has a 1-month article age cap, and caps at 100 req/day. Alpaca News is 200 req/min, goes back to 2015, allows commercial use on the free tier, and includes pre-resolved ticker candidates per article (from Benzinga's editorial tagging). Those ticker candidates feed Stage 3's resolver as starting hints, reducing LLM hallucination surface before whitelist validation.
+
+Reuters RSS was killed in 2020; Bloomberg has no public RSS — both removed from the original spec.
+
+**Interview answer:** "I switched from NewsAPI to Alpaca when I discovered NewsAPI's production ToS restriction. Alpaca also gives me pre-resolved ticker candidates from Benzinga, which reduces the LLM's hallucination surface in the resolver step."
+
+---
+
+## SHA-256 over MD5 for URL hashing
+
+**Decision:** SHA-256 for the `url_hash` dedup field, not MD5.
+
+**Why:** MD5 is deprecated for integrity use cases. SHA-256 is collision-resistant and the right default for a DB unique constraint. The hashed input is the normalized URL (query string stripped, lowercased, trailing slash removed) — not the raw URL, because the same story gets tracking params appended across outlets.
+
+---
+
+## Three-layer dedup: hash → time-domain → semantic
+
+**Decision:** Add a time-domain middle layer between hash dedup (Stage 2) and semantic dedup (Stage 6).
+
+**Why:** URL hash catches exact duplicates. Semantic pgvector dedup (Stage 6) catches same-story-different-headline. But wire services publish the same story to 50 outlets simultaneously with 50 different URLs and slightly different titles. Running LLM extraction on all 50 is expensive and noisy. Time-domain rule: same source domain + overlapping ticker hints + ≤4hr window → suppress, increment `coverage_count`. Zero LLM cost. Estimated 30–40% reduction in duplicate LLM calls on high-news days.
+
+`coverage_count` on the Event row is a secondary data point: high-coverage stories correlate with market impact and can be used as a signal weight in Stage 4 eval.
+
+---
+
+## T+1 accuracy as secondary eval metric alongside T+5
+
+**Decision:** Track and expose T+1 directional accuracy in `eval_results` alongside T+5.
+
+**Why:** T+5 is the primary metric (captures residual drift). T+1 will be measurably higher — the signal is stronger closer to the news event and decays as the market absorbs it. The T+1 vs. T+5 decay curve is more interesting than a single number: it shows you understand the mechanism, not just the metric. Required for Stage 4 eval schema — add `price_t1` and `correct_t1` to `eval_results`.
+
+---
+
 ## Forward-only pipeline (no backtesting)
 
 **Decision:** Run signals in real-time only, no historical backtesting.

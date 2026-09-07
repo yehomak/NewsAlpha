@@ -2,14 +2,24 @@
 
 ## Does news actually predict stock movement?
 
-**Yes, with caveats.**
+**Yes — weakly, for a narrow window, with documented failure modes to segment around.**
 
-- Academic studies: 63–72% directional accuracy in controlled settings
-- One study: 68.5% for tech/finance sectors at short horizons
-- Combined models (sentiment + price features): up to 86–89% — but that's in-sample and inflated
-- Realistic out-of-sample target: **55–65% at T+5** is credible and honest
-- News predicts *volatility* more reliably than *direction* — important nuance, worth stating in README
-- T+5 days is the right horizon: captures drift, not the initial spike (which is priced in within minutes)
+Realistic accuracy targets (LLM-era, 2024–2026 research):
+- **53–60% T+5 directional accuracy** is honest and defensible out-of-sample
+- **55–65% T+1–T+3** is achievable; signal decays as market absorbs it
+- Anything above 60% at meaningful sample size (200+ signals) should trigger a look-ahead bias audit before claiming it
+- Combined models (sentiment + price features): up to 86–89% in academic papers — almost always in-sample and inflated; do not cite these numbers
+
+Academic sources: arXiv 2412.19245 (LLM sentiment trading, 965k articles 2010–2023), arXiv 2412.10823 (FinGPT benchmark, 55%→63% with news clustering)
+
+News predicts *volatility* more reliably than *direction* — worth a sentence in the README. Shows domain awareness.
+
+**Speed window by market cap** (this defines where the project has realistic edge):
+- Large-cap (S&P 500): priced in within 15 min – 2 hr by algorithmic traders
+- Mid-cap: 2 – 12 hr absorption window
+- Small-cap: hours to 2 days — the realistic target for this pipeline
+
+The pipeline polls hourly. It competes against retail readers (hours to days), not HFTs (milliseconds). The edge is in extracting structured company+direction from narratives that don't fire a Bloomberg terminal alert automatically — supply chain disruption, exec departure, product recall.
 
 ## Commercial landscape
 
@@ -36,27 +46,43 @@ Key point: none of them publish live accuracy stats publicly. A portfolio projec
 
 ## Known pitfalls
 
-**Look-ahead bias (critical)**
-LLM backtests are contaminated — the model was trained on data that includes the outcomes. A 2026 arxiv paper (2309.17322) specifically addresses this. This project is immune because it's a forward-only real-time pipeline. State this explicitly in the README.
+**Look-ahead bias — top risk for LLM-based pipelines (critical)**
+LLM backtests are contaminated in two ways: (1) the model was trained on data including outcomes; (2) Claude trained past 2021 may *recall* a 2022 earnings headline's stock reaction rather than reasoning from the text. Papers: arXiv 2601.13770, arXiv 2512.23847. This project is immune because signals are extracted at ingest time — before T+5 is known — and the eval job only reads price data after the window closes. Cite arXiv 2309.17322 if asked about methodology.
+
+**Earnings announcement inversion ("buy the rumor, sell the news")**
+Pre-announcement informed trading front-runs the actual announcement, so the stock often moves *opposite* to the news sentiment on and just after the earnings date. The `event_type = earnings` segment will likely underperform or invert in the eval. Segment separately and do not average with analyst upgrades or product launches. Documented empirically in arXiv 2608.14014.
 
 **Market hours**
-After-hours news affects the *next* open, not the same-day close. T+5 price fetch must use the next trading day's open as the reference point, or ground truth is wrong.
+After-hours news affects the *next* open, not the same-day close. T+5 price fetch must use next trading day's open as the reference point, or ground truth is wrong.
 
-**"Buy the rumor, sell the news"**
-Earnings-day signals often invert post-announcement. Segment eval by `event_type` (earnings / product_launch / macro / general) or accuracy numbers will look confusing and unreliable.
+**Macro events — not worth extracting**
+Fed decisions, CPI prints, jobs reports: priced in by algorithmic traders within seconds. These swamp company-specific signals. Either filter macro `event_type` out of the LLM pipeline entirely, or report it separately and note the near-random accuracy.
 
 **Sector sensitivity**
-Sentiment predicts tech stocks better than utilities or consumer staples. Track accuracy by sector in the eval breakdown — makes results richer and more defensible in interviews.
-
-**Anonymization effect**
-Research found anonymized headlines outperform originals in-sample, because the LLM's prior knowledge of a company biases its sentiment assessment. Worth a note in the README.
+Sentiment predicts tech and biotech better than utilities or consumer staples. Track accuracy by sector — makes results richer and more defensible.
 
 **Stale news**
-Markets price in news within minutes. A story published at 9am is largely priced in by 9:05am. T+5 days captures the slower drift, which is more reliable.
+Skip stories older than 7 days at ingest — they have no T+5 signal value for a live pipeline.
 
-## Eval schema additions (from research)
+**RSS body text**
+feedparser body is truncated (150–300 chars). Stage 3 LLM prompts must be designed to work on headline + 1-sentence summary. Trafilatura can fetch full body but adds latency and blocking risk. This is a real constraint, not an edge case.
 
-Add `event_type` field to signals: `earnings | product_launch | macro | general`
-- Takes ~30 min to implement
-- Makes eval story significantly stronger
-- Lets you explain the earnings inversion effect in interviews
+## Eval schema additions
+
+`event_type` on Signal: `earnings | product_launch | macro | general` — already in schema.
+
+`price_t1` + `correct_t1` on EvalResult (add in Stage 4): T+1 accuracy as a secondary metric alongside T+5. Shows the signal decay curve — T+1 will be higher, which confirms the signal exists and decays, rather than being random noise. More interesting interview story than a single number.
+
+`coverage_count` on Event (add in Stage 2): how many outlets published equivalent stories. High count = market-moving story. Use as a signal weight multiplier in Stage 4 eval.
+
+## Open-source landscape (updated)
+
+| Project | Approach | Eval harness | Ticker validation |
+|---|---|---|---|
+| FinGPT (AI4Finance, ~14k ⭐) | Fine-tuned FinBERT batch sentiment | None | None |
+| FinRobot | LLM agents for finance tasks | None | None |
+| butterfly-effect | LangGraph + Claude + Pydantic validation | Ground-truth T+5 | Whitelist guardrail |
+
+No open-source project combines reasoning LLMs (not classifiers), structured Pydantic output, ticker whitelist validation, Langfuse tracing, and a ground-truth eval harness. All of them are missing at least one of these.
+
+The FinGPT DataSource layer pattern is worth borrowing: they normalize heterogeneous sources into one event schema before any LLM processing — which is exactly the Stage 2 → Stage 3 separation already planned.

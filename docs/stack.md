@@ -13,7 +13,7 @@ All choices below are decided. Rationale included for interview prep.
 | Database | PostgreSQL + pgvector |
 | ORM | SQLAlchemy 2.0 async + Alembic |
 | Scheduling | APScheduler |
-| News sources | feedparser (RSS) + NewsAPI free tier |
+| News sources | Alpaca News API (primary) + feedparser/RSS + NewsData.io (fallback); NewsAPI.org local dev only |
 | Stock prices | yfinance |
 | Observability | Langfuse (self-hosted in Docker Compose) |
 | Testing | pytest + pytest-asyncio + custom eval harness |
@@ -40,7 +40,13 @@ All choices below are decided. Rationale included for interview prep.
 
 **APScheduler** — runs in-process with FastAPI, zero extra infra. Sufficient for hourly ingestion + daily eval jobs. Interview answer: "I'd migrate to ARQ/Celery at scale."
 
-**feedparser + NewsAPI** — feedparser is free, no key, covers Reuters/Bloomberg RSS/Yahoo Finance. NewsAPI free tier = 100 req/day, good for volume. Polygon.io News as paid upgrade (pre-attaches ticker metadata).
+**Alpaca News API + feedparser + NewsData.io** — Alpaca (Benzinga partnership) is the primary source: 200 req/min free, pre-resolved ticker candidates already on each article, historical back to 2015, commercial use OK. feedparser covers RSS (Yahoo Finance, CNBC, PR Newswire) for breadth. NewsData.io (200/day free) as deployed fallback — NewsAPI.org is localhost-only per ToS and has a 1-month age cap. Reuters RSS was killed in 2020; Bloomberg is paywalled — neither is usable.
+
+**trafilatura** — full article body extraction from URLs. feedparser returns 150–300 char truncated summaries; trafilatura fetches the full text. Required for quality LLM input. Fallback: design Stage 3 prompts to work on headline + summary only.
+
+**tenacity** — retry decorator for HTTP fetches. 3 attempts, exponential backoff (1s→2s→4s). Handles NewsAPI 429s and feed timeouts without crashing the scheduler job.
+
+**Ticker whitelist** — NASDAQ screener CSV (downloadable daily from nasdaq.com/market-activity/stocks/screener). Covers NASDAQ, NYSE, AMEX with company name + symbol + sector. Refreshed as a periodic job. Alpaca's pre-resolved `ticker_hints` feed into the whitelist validation step, not past it.
 
 **yfinance** — free, no API key, T+5 lookups trivial. Unofficial API (note this in README — shows you know the tradeoff). Alpha Vantage free tier too rate-limited (25 req/day).
 
