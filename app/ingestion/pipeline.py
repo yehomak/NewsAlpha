@@ -11,8 +11,11 @@ from app.ingestion.dedup import (
     find_time_domain_duplicate,
     is_stale,
 )
+from app.ingestion.fetcher import fetch_body
 from app.ingestion.sources.alpaca import AlpacaSource
 from app.ingestion.sources.rss import RssSource
+
+_MIN_BODY_LEN = 200  # chars below which we attempt a full trafilatura fetch
 
 log = structlog.get_logger()
 
@@ -41,10 +44,16 @@ async def _store_article(session: AsyncSession, article: RawArticle) -> bool:
         dupe.coverage_count += 1
         return False
 
+    body = article.body
+    if not body or len(body) < _MIN_BODY_LEN:
+        fetched = await fetch_body(article.url)
+        if fetched:
+            body = fetched
+
     event = Event(
         url=article.url,
         title=article.title,
-        body=article.body,
+        body=body,
         source=article.source,
         published_at=article.published_at,
         url_hash=url_hash,

@@ -1,13 +1,14 @@
 from datetime import UTC, datetime
 
 import structlog
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Event
 from app.db.session import get_session
+from app.ingestion.pipeline import run_ingestion
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
@@ -17,6 +18,17 @@ class IngestionStatus(BaseModel):
     event_count: int
     last_fetched_at: datetime | None
     checked_at: datetime
+
+
+class TriggerResponse(BaseModel):
+    queued: bool
+
+
+@router.post("/trigger", response_model=TriggerResponse, status_code=202)
+async def trigger_ingestion(background_tasks: BackgroundTasks) -> TriggerResponse:
+    background_tasks.add_task(run_ingestion)
+    log.info("ingestion.triggered_manually")
+    return TriggerResponse(queued=True)
 
 
 @router.get("/status", response_model=IngestionStatus)
