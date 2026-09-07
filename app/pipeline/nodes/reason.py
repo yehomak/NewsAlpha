@@ -10,7 +10,7 @@ from app.pipeline.state import SignalData, SignalState
 
 log = structlog.get_logger()
 
-_SONNET = "claude-sonnet-5"
+_MODEL = "claude-haiku-4-5-20251001"
 
 
 class SignalOutput(BaseModel):
@@ -30,14 +30,14 @@ async def generate_signal(state: SignalState) -> dict:  # type: ignore[type-arg]
     if lf:
         gen = lf.generation(
             name="generate_signal",
-            model=_SONNET,
+            model=_MODEL,
             trace_id=state.get("langfuse_trace_id"),
             input={"ticker": ticker, "headline": state["headline"]},
         )
 
     try:
         response = await client.messages.create(
-            model=_SONNET,
+            model=_MODEL,
             max_tokens=512,
             system=(
                 "You are a quantitative financial analyst. Analyze news articles and determine "
@@ -72,7 +72,7 @@ async def generate_signal(state: SignalState) -> dict:  # type: ignore[type-arg]
         return {"signal": None, "error": f"generate_signal failed: {exc}"}
 
     tool_block = next((b for b in response.content if b.type == "tool_use"), None)
-    cost = compute_cost(response.usage, _SONNET)
+    cost = compute_cost(response.usage, _MODEL)
 
     if not tool_block:
         if gen:
