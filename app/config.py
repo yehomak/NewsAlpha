@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     alpaca_secret: str = ""
     ingest_interval_hours: int = 1
     ingest_max_age_days: int = 7
+    # pipeline
+    anthropic_api_key: str = ""
+    pipeline_interval_minutes: int = 30
+    pipeline_batch_size: int = 25
 
     @property
     def is_production(self) -> bool:
