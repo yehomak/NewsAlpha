@@ -13,10 +13,10 @@ from app.eval.runner import _is_correct
         (Direction.BEARISH, -2.5, True),
         (Direction.BEARISH, 0.0, False),
         (Direction.BEARISH, 1.0, False),
-        (Direction.NEUTRAL, 0.5, True),   # within ±1%
+        (Direction.NEUTRAL, 0.5, True),  # within ±1%
         (Direction.NEUTRAL, -0.9, True),  # within ±1%
         (Direction.NEUTRAL, 1.1, False),  # outside ±1%
-        (Direction.NEUTRAL, -1.1, False), # outside ±1%
+        (Direction.NEUTRAL, -1.1, False),  # outside ±1%
     ],
 )
 def test_is_correct(direction: Direction, return_pct: float, expected: bool) -> None:
