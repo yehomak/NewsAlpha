@@ -7,6 +7,7 @@ from alpaca.data.models import NewsSet
 from alpaca.data.requests import NewsRequest
 
 from app.ingestion.base import RawArticle
+from app.pipeline.universe import SIGNAL_UNIVERSE
 
 log = structlog.get_logger()
 
@@ -19,7 +20,8 @@ class AlpacaSource:
 
     async def fetch(self, limit: int = 50) -> list[RawArticle]:
         start = datetime.now(UTC) - timedelta(days=7)
-        request = NewsRequest(start=start, limit=limit, sort="desc")
+        symbols_filter = ",".join(SIGNAL_UNIVERSE)
+        request = NewsRequest(symbols=symbols_filter, start=start, limit=limit, sort="desc")
         loop = asyncio.get_event_loop()
         try:
             news_set = await loop.run_in_executor(None, lambda: self._client.get_news(request))
