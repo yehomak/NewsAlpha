@@ -15,6 +15,7 @@ from sqlalchemy import (
     Text,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -47,6 +48,8 @@ class Event(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     url_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     processed: Mapped[bool] = mapped_column(Boolean, default=False)
+    ticker_hints: Mapped[list[str] | None] = mapped_column(JSONB)
+    coverage_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
     signals: Mapped[list["Signal"]] = relationship(back_populates="event")
 
