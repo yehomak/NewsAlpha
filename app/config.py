@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     langfuse_secret_key: str = ""
     log_level: str = "INFO"
     app_env: str = "development"
+    # ingestion
+    alpaca_key: str = ""
+    alpaca_secret: str = ""
+    ingest_interval_hours: int = 1
+    ingest_max_age_days: int = 7
 
     @property
     def is_production(self) -> bool:
