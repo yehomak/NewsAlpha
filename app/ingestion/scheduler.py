@@ -2,6 +2,7 @@ import structlog
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.config import settings
+from app.eval.runner import run_eval
 from app.ingestion.pipeline import run_ingestion
 from app.pipeline.runner import run_pipeline
 
@@ -27,8 +28,17 @@ def configure_scheduler() -> None:
         replace_existing=True,
         max_instances=1,
     )
+    scheduler.add_job(
+        run_eval,
+        trigger="interval",
+        hours=settings.eval_interval_hours,
+        id="eval",
+        replace_existing=True,
+        max_instances=1,
+    )
     log.info(
         "scheduler.configured",
         ingest_hours=settings.ingest_interval_hours,
         pipeline_minutes=settings.pipeline_interval_minutes,
+        eval_hours=settings.eval_interval_hours,
     )
