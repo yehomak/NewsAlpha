@@ -3,6 +3,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.config import settings
 from app.ingestion.pipeline import run_ingestion
+from app.pipeline.runner import run_pipeline
 
 log = structlog.get_logger()
 
@@ -16,6 +17,18 @@ def configure_scheduler() -> None:
         hours=settings.ingest_interval_hours,
         id="ingest",
         replace_existing=True,
-        max_instances=1,  # prevent overlap if a run takes longer than the interval
+        max_instances=1,
     )
-    log.info("scheduler.configured", interval_hours=settings.ingest_interval_hours)
+    scheduler.add_job(
+        run_pipeline,
+        trigger="interval",
+        minutes=settings.pipeline_interval_minutes,
+        id="pipeline",
+        replace_existing=True,
+        max_instances=1,
+    )
+    log.info(
+        "scheduler.configured",
+        ingest_hours=settings.ingest_interval_hours,
+        pipeline_minutes=settings.pipeline_interval_minutes,
+    )
