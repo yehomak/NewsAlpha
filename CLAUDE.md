@@ -78,15 +78,13 @@ All tooling is set up and merged to `main`:
 - `db-migration-agent` — Alembic patterns, pgvector, safety guardrails
 - `eval-analyst` — T+5 design, segmentation, accuracy SQL queries
 
-**Skills** (`.claude/skills/`)
-- `langgraph-patterns` — state schema, node structure, graph assembly
-- `eval-design` — T+5 rules, look-ahead bias prevention, accuracy targets
-
 **Commands** (`.claude/commands/`)
 - `/commit` — conventional commits with ruff pre-flight
 - `/pr` — lint + mypy + test + structured PR description
 - `/migrate` — Alembic migration generation and apply
 - `/trace` — Langfuse trace lookup by signal_id or trace_id
+- `/langgraph-patterns` — state schema, node structure, graph assembly
+- `/eval-design` — T+5 rules, look-ahead bias prevention, accuracy targets
 
 **Hooks** (`.claude/hooks/`)
 - `pre-commit.sh` — blocks commit if ruff/mypy fail
@@ -96,5 +94,5 @@ All tooling is set up and merged to `main`:
 
 ## Current stage
 
-Stage 1 complete: skeleton running, schema migrated, CI green, Claude Code tooling live.
-Next: Stage 2 — ingestion pipeline (feedparser + NewsAPI, APScheduler, dedup).
+Stages 1–3 complete: skeleton, ingestion pipeline, LangGraph signal chain all merged to main.
+Next: Stage 4 — T+5 ground-truth eval with yfinance.
