@@ -13,7 +13,8 @@ FEEDS: dict[str, str] = {
     "cnbc_markets": (
         "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"
     ),
-    "pr_newswire": "https://www.prnewswire.com/rss/news-releases-list.rss",
+    # GlobeNewswire M&A feed kept — acquisition announcements are genuine signals.
+    # PR Newswire removed — company-controlled press releases introduce bullish bias.
     "globenewswire": "https://www.globenewswire.com/RssFeed/subjectcode/17-Mergers%20%26%20Acquisitions",
 }
 
