@@ -19,7 +19,7 @@ dependencies = [
     # stage 3 — signal chain
     "anthropic>=0.40.0",
     "langgraph>=0.2.0",
-    "langfuse>=2.0.0",
+    "langfuse>=2.0.0,<3.0.0",
     # stage 4 — eval
     "yfinance>=0.2.40",
 ]

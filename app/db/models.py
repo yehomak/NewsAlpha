@@ -60,10 +60,14 @@ class Signal(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     event_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("events.id"), nullable=False)
     ticker: Mapped[str] = mapped_column(String(16), nullable=False)
-    direction: Mapped[Direction] = mapped_column(Enum(Direction), nullable=False)
+    direction: Mapped[Direction] = mapped_column(
+        Enum(Direction, values_callable=lambda obj: [e.value for e in obj]), nullable=False
+    )
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
     reasoning: Mapped[str] = mapped_column(Text, nullable=False)
-    event_type: Mapped[EventType] = mapped_column(Enum(EventType), nullable=False)
+    event_type: Mapped[EventType] = mapped_column(
+        Enum(EventType, values_callable=lambda obj: [e.value for e in obj]), nullable=False
+    )
     cost_usd: Mapped[Decimal] = mapped_column(Numeric(10, 6), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     langfuse_trace_id: Mapped[str | None] = mapped_column(String(128))

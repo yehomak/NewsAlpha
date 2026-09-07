@@ -68,10 +68,10 @@ async def _run_event(event: Event) -> tuple[Signal | None, float]:
     orm_signal = Signal(
         event_id=event.id,
         ticker=signal_data["ticker"],
-        direction=Direction(signal_data["direction"]),
+        direction=Direction(signal_data["direction"].lower()),
         confidence=signal_data["confidence"],
         reasoning=signal_data["reasoning"],
-        event_type=EventType(signal_data["event_type"]),
+        event_type=EventType(signal_data["event_type"].lower()),
         cost_usd=Decimal(str(round(total_cost, 6))),
         langfuse_trace_id=trace_id,
     )
