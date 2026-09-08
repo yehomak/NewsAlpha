@@ -26,7 +26,7 @@ FastMCP → MCP tool exposure
 ## Stack
 
 - FastAPI (async) + SQLAlchemy 2.0 async + Alembic + asyncpg
-- PostgreSQL 16 + pgvector (semantic dedup in Stage 6)
+- PostgreSQL 16 + pgvector (semantic dedup, Stage 6)
 - LangGraph — extract → resolve → reason chain (all Haiku, ~$0.001/article)
 - Claude Haiku (`claude-haiku-4-5-20251001`) for all LLM nodes
 - Langfuse (self-hosted on port 3000) — every LLM call traced, `langfuse_trace_id` stored on Signal; SDK pinned to `<3.0.0`
@@ -48,6 +48,8 @@ FastMCP → MCP tool exposure
 **Enum serialization** — `Mapped[Direction]` and `Mapped[EventType]` use `values_callable=lambda obj: [e.value for e in obj]` to make SQLAlchemy send lowercase values matching PostgreSQL enum labels. Always include this on any new enum-typed column.
 
 **Truncation filter** — after `signal_data` is returned from the LangGraph chain, `_reasoning_flags_truncation()` in `runner.py` checks the reasoning for phrases like "cuts off mid-sentence", "truncated", etc. If flagged, returns `(None, cost)` — no signal inserted, event still marked `processed=True`.
+
+**Semantic dedup** — on every ingest, `embed_text(title)` produces a 384-dim vector via `all-MiniLM-L6-v2` (local, free, lazy-loaded). `find_semantic_duplicate()` queries events from the last 24h with cosine distance < 0.05 (similarity > 0.95). Dupes are inserted with `processed=True` + `dedup_skipped=True` + `similar_to_id` + `similarity_score` — audit trail in DB, invisible to the pipeline. Never add a separate `dedup_skipped` filter in pipeline queries; `processed=True` already excludes them.
 
 **Cost tracking** — every LLM call records input + output tokens × price to `signals.cost_usd`. Use `anthropic` SDK usage response for this.
 
@@ -112,13 +114,12 @@ All tooling is set up and merged to `main`:
 
 ## Current stage
 
-Stages 1–5 complete: skeleton, ingestion, LangGraph signal chain, T+5 eval harness, query API — all merged to main.
+Stages 1–6 complete: skeleton, ingestion, LangGraph signal chain, T+5 eval harness, query API, pgvector semantic dedup — all merged to main.
 Pipeline live: collecting signals, Langfuse tracing active (self-hosted). First T+5 eval results expected ~2026-09-13.
 
 **Known gaps (not yet built):**
-- API key auth on /signals and /eval endpoints (deferred from Stage 5)
+- API key auth on /signals and /eval endpoints (deferred, low priority — not internet-exposed)
 - FastMCP wrapper (Stage 7)
-- pgvector semantic dedup (Stage 6)
 - Railway deploy + README with real accuracy numbers (Stage 7/8)
 
-Next: Stage 6 — pgvector semantic dedup.
+Next: Stage 7 — FastMCP wrapper + Railway deploy.

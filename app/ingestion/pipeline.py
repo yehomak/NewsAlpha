@@ -8,9 +8,11 @@ from app.ingestion.base import NewsSource, RawArticle
 from app.ingestion.dedup import (
     compute_url_hash,
     find_by_hash,
+    find_semantic_duplicate,
     find_time_domain_duplicate,
     is_stale,
 )
+from app.ingestion.embedder import embed_text
 from app.ingestion.fetcher import fetch_body
 from app.ingestion.sources.alpaca import AlpacaSource
 from app.ingestion.sources.rss import RssSource
@@ -50,6 +52,36 @@ async def _store_article(session: AsyncSession, article: RawArticle) -> bool:
         if fetched:
             body = fetched
 
+    embedding = await embed_text(article.title)
+    semantic_match = await find_semantic_duplicate(session, embedding)
+
+    if semantic_match:
+        matched_event, score = semantic_match
+        log.info(
+            "ingestion.semantic_duplicate",
+            url=article.url,
+            matched_event_id=matched_event.id,
+            similarity=round(score, 4),
+        )
+        session.add(
+            Event(
+                url=article.url,
+                title=article.title,
+                body=body,
+                source=article.source,
+                published_at=article.published_at,
+                url_hash=url_hash,
+                ticker_hints=article.ticker_hints or None,
+                coverage_count=1,
+                embedding=embedding,
+                processed=True,  # skip LLM pipeline — dedup_skipped explains why
+                dedup_skipped=True,
+                similar_to_id=matched_event.id,
+                similarity_score=score,
+            )
+        )
+        return False
+
     event = Event(
         url=article.url,
         title=article.title,
@@ -59,6 +91,7 @@ async def _store_article(session: AsyncSession, article: RawArticle) -> bool:
         url_hash=url_hash,
         ticker_hints=article.ticker_hints or None,
         coverage_count=1,
+        embedding=embedding,
     )
     session.add(event)
     return True
