@@ -104,19 +104,39 @@ APScheduler `AsyncIOScheduler` wired into FastAPI lifespan — single-worker onl
 
 ---
 
-## Stage 7 — Production Polish (Week 7)
-**Goal: looks like real software**
+## Stage 7 — Dashboard UI (Week 7)
+**Goal: visual proof the pipeline works — one URL that tells the whole story**
 
-- Dockerfile optimized (multi-stage build)
-- GitHub Actions green: ruff, mypy, pytest, Docker build
-- Deploy to Railway — get a real URL
-- FastMCP wrapper for `/signals` (~30 lines, MCP tool exposure)
+React + TypeScript + Vite SPA in `dashboard/`. Hits the `/stats/*` and existing API endpoints. Dark terminal aesthetic: monospace for tickers/numbers, green/red for direction, amber accent.
+
+**New backend endpoints** (`app/api/routes/stats.py`):
+- `GET /stats/tickers` — per-ticker: signal count, accuracy rate, avg confidence, last direction, last signal timestamp
+- `GET /stats/events` — total / processed / unprocessed / dedup-skipped, by source
+- `GET /stats/costs` — total cost_usd, avg per signal, by-day array
+- `GET /stats/pipeline` — last ingest/pipeline/eval run times, signals today, events today, truncation rejections
+
+**Dashboard sections:**
+1. **Header bar** — status pill (live/idle), last ingest, next scheduled run
+2. **Hero metrics** — directional accuracy %, total signals, total cost spent, events ingested
+3. **Companies / Tickers grid** — per-ticker card with accuracy rate, signal count, last direction; click → full signal history
+4. **Signal feed** — latest signals: ticker, direction chip, confidence bar, event type, correct/wrong badge
+5. **Eval & accuracy breakdown** — by direction, by event type, pending count + expected dates
+6. **Event intelligence** — processed / unprocessed / dedup-skipped, by source, coverage count distribution
+7. **Signal quality insights** — confidence histogram, acceptance rate, truncation rejections
+8. **Cost & spend** — total spend from DB, avg cost per signal, daily spend chart; `DASHBOARD_BUDGET_USD` env var for budget remaining (Anthropic has no public balance API)
+9. **Process timeline** — last run times, signals/events today
+
+**Status: not started.**
 
 ---
 
-## Stage 8 — README + Narrative (Week 8)
-**Goal: the 5-minute reviewer impression**
+## Stage 8 — FastMCP + Deploy + README (Week 8)
+**Goal: real URL, MCP tool exposure, reviewer-ready in 5 min**
 
+- FastMCP wrapper for `/signals` (~30 lines, MCP tool exposure)
+- Dockerfile optimized (multi-stage build)
+- GitHub Actions green: ruff, mypy, pytest, Docker build
+- Deploy backend to Railway, dashboard to Vercel — one public URL each
 - Architecture diagram (Mermaid)
 - Langfuse trace screenshot
 - Eval results table with real numbers: "X% directional accuracy over N signals"
@@ -137,5 +157,5 @@ APScheduler `AsyncIOScheduler` wired into FastAPI lifespan — single-worker onl
 | 4 | Eval harness | Accuracy number exists |
 | 5 | API | Queryable endpoints |
 | 6 | pgvector | Semantic dedup |
-| 7 | Polish | Live URL, CI green |
-| 8 | README | Reviewer-ready in 5 min |
+| 7 | Dashboard UI | Visual proof at one URL |
+| 8 | Deploy + README | Reviewer-ready in 5 min |

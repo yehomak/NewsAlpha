@@ -4,6 +4,9 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir --upgrade pip
 
+# Install CPU-only torch first so sentence-transformers doesn't pull CUDA (~2GB)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
 COPY pyproject.toml .
 COPY app/ ./app/
 
