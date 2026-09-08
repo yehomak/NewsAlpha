@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     pipeline_interval_minutes: int = 30
     pipeline_batch_size: int = 25
+    pipeline_max_age_days: int = 2  # only run LLM on articles ≤2 days old; ingest still keeps 7
     # eval
     eval_interval_hours: int = 6
     # dashboard

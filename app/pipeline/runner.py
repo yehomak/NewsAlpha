@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -11,8 +12,37 @@ from app.db.session import async_session_factory
 from app.pipeline.graph import graph
 from app.pipeline.langfuse_client import get_langfuse
 from app.pipeline.state import SignalState
+from app.pipeline.universe import COMPANY_KEYWORDS, SIGNAL_UNIVERSE, SIGNAL_UNIVERSE_SET
 
 log = structlog.get_logger()
+
+# Pre-compiled patterns for cheap pre-LLM relevance check on RSS articles.
+# Excludes single/two-char tickers (V, F, MA, GM, DE, EW, CI, GS, MS, BA, KO, PG)
+# — too short for reliable word-boundary matching; covered by COMPANY_KEYWORDS instead.
+_TICKER_RE = re.compile(
+    r"\b("
+    + "|".join(t for t in sorted(SIGNAL_UNIVERSE, key=len, reverse=True) if len(t) >= 3)
+    + r")\b"
+)
+_KEYWORD_RE = re.compile(
+    r"\b("
+    + "|".join(re.escape(k) for k in sorted(COMPANY_KEYWORDS, key=len, reverse=True))
+    + r")\b",
+    re.IGNORECASE,
+)
+
+
+def _has_universe_mention(event: Event) -> bool:
+    """Return True if this article plausibly mentions a universe company.
+
+    For Alpaca articles: ticker_hints are pre-resolved — check overlap with universe.
+    For RSS articles: scan title + first 500 chars of body for ticker symbols or company names.
+    """
+    if event.ticker_hints and set(event.ticker_hints) & SIGNAL_UNIVERSE_SET:
+        return True
+    text = (event.title or "") + " " + (event.body or "")[:500]
+    return bool(_TICKER_RE.search(text.upper()) or _KEYWORD_RE.search(text))
+
 
 _TRUNCATION_MARKERS = (
     "cuts off mid-sentence",
@@ -30,7 +60,7 @@ def _reasoning_flags_truncation(reasoning: str) -> bool:
 
 
 async def _fetch_unprocessed(session: AsyncSession, limit: int) -> list[Event]:
-    cutoff = datetime.now(UTC) - timedelta(days=settings.ingest_max_age_days)
+    cutoff = datetime.now(UTC) - timedelta(days=settings.pipeline_max_age_days)
     result = await session.execute(
         select(Event)
         .where(Event.processed.is_(False))
@@ -111,6 +141,13 @@ async def run_pipeline() -> int:
 
         for event in events:
             event.processed = True  # mark first — committed even if signal insert fails
+            if not _has_universe_mention(event):
+                log.info(
+                    "pipeline.skipped_no_universe_mention",
+                    event_id=event.id,
+                    title=event.title[:80],
+                )
+                continue
             try:
                 signal, cost = await _run_event(event)
                 if signal:
