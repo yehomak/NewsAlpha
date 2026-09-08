@@ -103,6 +103,7 @@ All tooling is set up and merged to `main`:
 
 ## API endpoints
 
+**Existing:**
 - `GET /health` — liveness check
 - `POST /ingestion/trigger` — manual ingest run (202)
 - `GET /ingestion/status` — event count + last fetch time
@@ -112,6 +113,16 @@ All tooling is set up and merged to `main`:
 - `POST /eval/trigger` — manual eval run (202)
 - `GET /eval/summary` — overall accuracy %, avg return, pending count, breakdown by direction and event_type
 
+**Stage 7 (planned):**
+- `GET /stats/tickers` — per-ticker: signal_count, accuracy_rate, avg_confidence, last_direction, last_signal_at
+- `GET /stats/events` — total / processed / unprocessed / dedup_skipped, by_source breakdown
+- `GET /stats/costs` — total_cost_usd, avg_cost_per_signal, by_day array
+- `GET /stats/pipeline` — last ingest/pipeline/eval run times, signals_today, events_today, truncation_rejections
+
+## Dashboard (Stage 7)
+
+React + TypeScript + Vite SPA in `dashboard/`. Dark terminal aesthetic: monospace for tickers/numbers, green/red strictly for direction, amber accent for interactive. Sections: hero metrics, tickers grid, signal feed, eval breakdown, event intelligence, signal quality insights, cost/spend, process timeline.
+
 ## Current stage
 
 Stages 1–6 complete: skeleton, ingestion, LangGraph signal chain, T+5 eval harness, query API, pgvector semantic dedup — all merged to main.
@@ -119,7 +130,7 @@ Pipeline live: collecting signals, Langfuse tracing active (self-hosted). First 
 
 **Known gaps (not yet built):**
 - API key auth on /signals and /eval endpoints (deferred, low priority — not internet-exposed)
-- FastMCP wrapper (Stage 7)
-- Railway deploy + README with real accuracy numbers (Stage 7/8)
+- Stage 7: Dashboard UI — 4 new `/stats/*` backend endpoints + React SPA in `dashboard/`
+- Stage 8: FastMCP wrapper + Railway deploy + README with real accuracy numbers
 
-Next: Stage 7 — FastMCP wrapper + Railway deploy.
+Next: Stage 7 — Dashboard UI.

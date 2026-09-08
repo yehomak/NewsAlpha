@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     pipeline_batch_size: int = 25
     # eval
     eval_interval_hours: int = 6
+    # dashboard
+    cors_origins: list[str] = ["*"]
 
     @property
     def is_production(self) -> bool:
