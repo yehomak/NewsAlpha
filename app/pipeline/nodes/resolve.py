@@ -16,7 +16,7 @@ _HAIKU = "claude-haiku-4-5-20251001"
 
 class TickerProposal(BaseModel):
     ticker: str
-    reasoning: str
+    reasoning: str = ""
 
 
 async def resolve_tickers(state: SignalState) -> dict:  # type: ignore[type-arg]
