@@ -9,7 +9,6 @@ from app.ingestion.dedup import (
     compute_url_hash,
     find_by_hash,
     find_semantic_duplicate,
-    find_time_domain_duplicate,
     is_stale,
 )
 from app.ingestion.embedder import embed_text
@@ -39,11 +38,6 @@ async def _store_article(session: AsyncSession, article: RawArticle) -> bool:
     url_hash = compute_url_hash(article.url)
 
     if await find_by_hash(session, url_hash):
-        return False
-
-    dupe = await find_time_domain_duplicate(session, article.source, article.ticker_hints)
-    if dupe:
-        dupe.coverage_count += 1
         return False
 
     body = article.body
