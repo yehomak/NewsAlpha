@@ -14,6 +14,20 @@ from app.pipeline.state import SignalState
 
 log = structlog.get_logger()
 
+_TRUNCATION_MARKERS = (
+    "cuts off mid-sentence",
+    "article cuts off",
+    "text cuts off",
+    "is incomplete",
+    "appears to be cut",
+    "truncated",
+)
+
+
+def _reasoning_flags_truncation(reasoning: str) -> bool:
+    lower = reasoning.lower()
+    return any(marker in lower for marker in _TRUNCATION_MARKERS)
+
 
 async def _fetch_unprocessed(session: AsyncSession, limit: int) -> list[Event]:
     cutoff = datetime.now(UTC) - timedelta(days=settings.ingest_max_age_days)
@@ -63,6 +77,14 @@ async def _run_event(event: Event) -> tuple[Signal | None, float]:
     total_cost = result.get("total_cost_usd", 0.0)
 
     if signal_data is None:
+        return None, total_cost
+
+    if _reasoning_flags_truncation(signal_data["reasoning"]):
+        log.warning(
+            "pipeline.truncated_article",
+            event_id=event.id,
+            ticker=signal_data.get("ticker"),
+        )
         return None, total_cost
 
     orm_signal = Signal(
