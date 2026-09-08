@@ -49,6 +49,8 @@ FastMCP → MCP tool exposure
 
 **Truncation filter** — after `signal_data` is returned from the LangGraph chain, `_reasoning_flags_truncation()` in `runner.py` checks the reasoning for phrases like "cuts off mid-sentence", "truncated", etc. If flagged, returns `(None, cost)` — no signal inserted, event still marked `processed=True`.
 
+**Semantic dedup** — on every ingest, `embed_text(title)` produces a 384-dim vector via `all-MiniLM-L6-v2` (local, free, lazy-loaded). `find_semantic_duplicate()` queries events from the last 24h with cosine distance < 0.05 (similarity > 0.95). Dupes are inserted with `processed=True` + `dedup_skipped=True` + `similar_to_id` + `similarity_score` — audit trail in DB, invisible to the pipeline. Never use a separate filter on `dedup_skipped` in pipeline queries; `processed=True` already excludes them.
+
 **Cost tracking** — every LLM call records input + output tokens × price to `signals.cost_usd`. Use `anthropic` SDK usage response for this.
 
 **Langfuse tracing** — wrap every LLM call in a Langfuse trace. Store `trace_id` on the Signal row.
@@ -112,13 +114,12 @@ All tooling is set up and merged to `main`:
 
 ## Current stage
 
-Stages 1–5 complete: skeleton, ingestion, LangGraph signal chain, T+5 eval harness, query API — all merged to main.
+Stages 1–6 complete: skeleton, ingestion, LangGraph signal chain, T+5 eval harness, query API, pgvector semantic dedup — all merged to main.
 Pipeline live: collecting signals, Langfuse tracing active (self-hosted). First T+5 eval results expected ~2026-09-13.
 
 **Known gaps (not yet built):**
-- API key auth on /signals and /eval endpoints (deferred from Stage 5)
+- API key auth on /signals and /eval endpoints (deferred, low priority — not internet-exposed)
 - FastMCP wrapper (Stage 7)
-- pgvector semantic dedup (Stage 6)
 - Railway deploy + README with real accuracy numbers (Stage 7/8)
 
-Next: Stage 6 — pgvector semantic dedup.
+Next: Stage 7 — FastMCP wrapper + Railway deploy.
