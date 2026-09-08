@@ -18,7 +18,7 @@ class AlpacaSource:
     def __init__(self, api_key: str, secret_key: str) -> None:
         self._client = NewsClient(api_key=api_key, secret_key=secret_key)
 
-    async def fetch(self, limit: int = 50) -> list[RawArticle]:
+    async def fetch(self, limit: int = 200) -> list[RawArticle]:
         start = datetime.now(UTC) - timedelta(days=7)
         symbols_filter = ",".join(SIGNAL_UNIVERSE)
         request = NewsRequest(symbols=symbols_filter, start=start, limit=limit, sort="desc")

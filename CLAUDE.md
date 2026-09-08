@@ -130,7 +130,9 @@ Pipeline live: collecting signals, Langfuse tracing active (self-hosted). First 
 
 **Known gaps (not yet built):**
 - API key auth on /signals and /eval endpoints (deferred, low priority — not internet-exposed)
-- Stage 7: Dashboard UI — 4 new `/stats/*` backend endpoints + React SPA in `dashboard/`
-- Stage 8: FastMCP wrapper + Railway deploy + README with real accuracy numbers
+- Stage 8A: FastMCP wrapper — ~30 lines, MCP tool exposure for /signals + /eval/summary
+- Stage 8B: Eval results grid in dashboard — per-signal table, lands after T+5 results (~Sep 13)
+- Stage 8C: README — Mermaid diagram, real accuracy numbers, 3-command setup, look-ahead bias note
+- Stage 8D: Deploy — optional; Railway no longer free; Fly.io / Render if public URL needed
 
-Next: Stage 7 — Dashboard UI.
+Next: Stage 8A — FastMCP.

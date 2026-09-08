@@ -133,3 +133,139 @@ assert len(SIGNAL_UNIVERSE) == 100, (
     f"Universe must be exactly 100 tickers, got {len(SIGNAL_UNIVERSE)}"
 )
 SIGNAL_UNIVERSE_SET: frozenset[str] = frozenset(SIGNAL_UNIVERSE)
+
+# Company name keywords used for pre-LLM relevance filtering on RSS articles.
+# Single-word or phrase match (case-insensitive). Tickers V, F, MA, GM, DE, EW, CI, GS, MS
+# are too short/common for reliable text matching — covered here by name instead.
+COMPANY_KEYWORDS: frozenset[str] = frozenset(
+    [
+        # Tech — mega-cap
+        "apple",
+        "microsoft",
+        "nvidia",
+        "google",
+        "alphabet",
+        "meta",
+        "facebook",
+        # Tech — cloud/SaaS
+        "salesforce",
+        "servicenow",
+        "workday",
+        "snowflake",
+        "datadog",
+        "atlassian",
+        # Tech — semis
+        "qualcomm",
+        "broadcom",
+        "texas instruments",
+        "marvell",
+        # Tech — cyber
+        "crowdstrike",
+        "palo alto",
+        "zscaler",
+        # Tech — fintech/consumer
+        "paypal",
+        "coinbase",
+        "shopify",
+        "uber",
+        # Tech — enterprise/infra
+        "oracle",
+        "adobe",
+        "cisco",
+        "dell",
+        # Healthcare — pharma
+        "eli lilly",
+        "abbvie",
+        "merck",
+        "pfizer",
+        "bristol myers",
+        "bristol-myers",
+        # Healthcare — biotech
+        "amgen",
+        "gilead",
+        "regeneron",
+        "vertex",
+        "biogen",
+        "moderna",
+        # Healthcare — devices
+        "intuitive surgical",
+        "medtronic",
+        "edwards lifesciences",
+        "stryker",
+        "boston scientific",
+        # Healthcare — managed care
+        "unitedhealth",
+        "elevance",
+        "humana",
+        "cigna",
+        # Healthcare — specialty/health IT
+        "veeva",
+        "dexcom",
+        "idexx",
+        "zoetis",
+        # Consumer Disc — ecommerce/streaming
+        "amazon",
+        "netflix",
+        # Consumer Disc — restaurants
+        "mcdonald",
+        "starbucks",
+        "chipotle",
+        "yum brands",
+        # Consumer Disc — auto
+        "tesla",
+        "general motors",
+        "ford motor",
+        # Consumer Disc — retail
+        "costco",
+        "target",
+        "lululemon",
+        # Consumer Disc — travel
+        "booking holdings",
+        "marriott",
+        "airbnb",
+        # Financials — banks
+        "jpmorgan",
+        "jp morgan",
+        "bank of america",
+        "goldman sachs",
+        "morgan stanley",
+        "wells fargo",
+        # Financials — payments
+        "visa",
+        "mastercard",
+        # Financials — asset mgmt/data
+        "blackrock",
+        "charles schwab",
+        "s&p global",
+        "moody",
+        # Financials — insurance
+        "progressive",
+        # Industrials — defense
+        "lockheed martin",
+        "raytheon",
+        "northrop grumman",
+        "general dynamics",
+        "boeing",
+        # Industrials — machinery/logistics
+        "caterpillar",
+        "deere",
+        "honeywell",
+        "fedex",
+        # Energy
+        "exxon",
+        "chevron",
+        "occidental",
+        "schlumberger",
+        "conocophillips",
+        # Staples
+        "walmart",
+        "procter",
+        "coca-cola",
+        "coca cola",
+        # Comms
+        "disney",
+        "t-mobile",
+        "comcast",
+        "electronic arts",
+    ]
+)
