@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import structlog
 from fastapi import FastAPI
 
+from app.api.routes.eval import router as eval_router
 from app.api.routes.health import router as health_router
 from app.api.routes.ingestion import router as ingestion_router
 from app.api.routes.signals import router as signals_router
@@ -29,3 +30,4 @@ app = FastAPI(title="butterfly-effect", version="0.1.0", lifespan=lifespan)
 app.include_router(health_router)
 app.include_router(ingestion_router)
 app.include_router(signals_router)
+app.include_router(eval_router)
