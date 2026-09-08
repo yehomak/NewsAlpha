@@ -59,30 +59,3 @@ async def find_semantic_duplicate(
         return None
     event, similarity = row
     return event, float(similarity)
-
-
-async def find_time_domain_duplicate(
-    session: AsyncSession,
-    source: str,
-    ticker_hints: list[str],
-    window_hours: int = 4,
-) -> Event | None:
-    """Return an existing Event from the same source with overlapping tickers within the window."""
-    if not ticker_hints:
-        return None
-    cutoff = datetime.now(UTC) - timedelta(hours=window_hours)
-    result = await session.execute(
-        select(Event)
-        .where(
-            Event.source == source,
-            Event.fetched_at >= cutoff,
-            Event.ticker_hints.is_not(None),
-        )
-        .limit(20)
-    )
-    recent = result.scalars().all()
-    hint_set = set(ticker_hints)
-    for event in recent:
-        if event.ticker_hints and hint_set & set(event.ticker_hints):
-            return event
-    return None
