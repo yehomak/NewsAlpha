@@ -88,10 +88,12 @@ async def run_pipeline() -> int:
             return 0
 
         for event in events:
+            event.processed = True  # mark first — committed even if signal insert fails
             try:
                 signal, cost = await _run_event(event)
                 if signal:
-                    session.add(signal)
+                    async with session.begin_nested():  # savepoint per signal insert
+                        session.add(signal)
                     stored += 1
                     log.info(
                         "pipeline.signal_stored",
@@ -104,10 +106,8 @@ async def run_pipeline() -> int:
                     log.info("pipeline.no_signal", event_id=event.id, cost_usd=round(cost, 6))
             except Exception:
                 log.exception("pipeline.event_failed", event_id=event.id)
-            finally:
-                event.processed = True
 
-        await session.commit()
+        await session.commit()  # commits processed=True for all events
 
     log.info("pipeline.run_complete", stored=stored, processed=len(events))
     return stored
