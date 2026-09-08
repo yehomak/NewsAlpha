@@ -47,6 +47,8 @@ FastMCP → MCP tool exposure
 
 **Enum serialization** — `Mapped[Direction]` and `Mapped[EventType]` use `values_callable=lambda obj: [e.value for e in obj]` to make SQLAlchemy send lowercase values matching PostgreSQL enum labels. Always include this on any new enum-typed column.
 
+**Truncation filter** — after `signal_data` is returned from the LangGraph chain, `_reasoning_flags_truncation()` in `runner.py` checks the reasoning for phrases like "cuts off mid-sentence", "truncated", etc. If flagged, returns `(None, cost)` — no signal inserted, event still marked `processed=True`.
+
 **Cost tracking** — every LLM call records input + output tokens × price to `signals.cost_usd`. Use `anthropic` SDK usage response for this.
 
 **Langfuse tracing** — wrap every LLM call in a Langfuse trace. Store `trace_id` on the Signal row.
@@ -111,5 +113,12 @@ All tooling is set up and merged to `main`:
 ## Current stage
 
 Stages 1–5 complete: skeleton, ingestion, LangGraph signal chain, T+5 eval harness, query API — all merged to main.
-Pipeline live: collecting signals, Langfuse tracing active (self-hosted).
+Pipeline live: collecting signals, Langfuse tracing active (self-hosted). First T+5 eval results expected ~2026-09-13.
+
+**Known gaps (not yet built):**
+- API key auth on /signals and /eval endpoints (deferred from Stage 5)
+- FastMCP wrapper (Stage 7)
+- pgvector semantic dedup (Stage 6)
+- Railway deploy + README with real accuracy numbers (Stage 7/8)
+
 Next: Stage 6 — pgvector semantic dedup.
