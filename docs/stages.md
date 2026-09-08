@@ -126,24 +126,35 @@ React + TypeScript + Vite SPA in `dashboard/`. Hits the `/stats/*` and existing 
 8. **Cost & spend** — total spend from DB, avg cost per signal, daily spend chart; `DASHBOARD_BUDGET_USD` env var for budget remaining (Anthropic has no public balance API)
 9. **Process timeline** — last run times, signals/events today
 
-**Status: not started.**
+**Status: complete.**
 
 ---
 
-## Stage 8 — FastMCP + Deploy + README (Week 8)
-**Goal: real URL, MCP tool exposure, reviewer-ready in 5 min**
+## Stage 8 — FastMCP + Eval Grid + README + Deploy (Week 8)
+**Goal: reviewer-ready in 5 min — MCP exposure, real accuracy numbers, documentation**
 
-- FastMCP wrapper for `/signals` (~30 lines, MCP tool exposure)
-- Dockerfile optimized (multi-stage build)
-- GitHub Actions green: ruff, mypy, pytest, Docker build
-- Deploy backend to Railway, dashboard to Vercel — one public URL each
-- Architecture diagram (Mermaid)
+Four sub-stages, ordered by priority:
+
+### 8A — FastMCP
+~30 lines wrapping `/signals` and `/eval/summary` as MCP tools. Makes the pipeline callable from Claude Desktop and any MCP client. Strong interview differentiator — "it's not just an API, it's an MCP server."
+
+### 8B — Eval results grid in dashboard
+New dashboard section: per-signal eval table once T+5 results land (~Sep 13). Grid layout matching the tickers section.
+
+Columns: ticker · direction · confidence · T0 price · T5 price · return% · correct/wrong badge
+
+This is the visual centerpiece — proof the numbers are real, not vibed.
+
+### 8C — README + architecture diagram
+- Mermaid pipeline diagram (news → ingest → dedup → LangGraph → eval → dashboard)
 - Langfuse trace screenshot
-- Eval results table with real numbers: "X% directional accuracy over N signals"
-- Cost stats: "$X per 1000 signals"
+- Real accuracy table: "X% directional accuracy over N signals, T+5"
+- Cost stats: "$X avg per signal, $Y total tracked"
 - Note on look-ahead bias immunity (forward-only pipeline, cite arxiv 2309.17322)
 - Local setup in 3 commands (`git clone`, `cp .env.example .env`, `docker compose up`)
-- Short Loom demo video (3 min max)
+
+### 8D — Deploy (optional / deferred)
+Railway is no longer free. Options if a public URL is needed: Fly.io (hobby tier free), Render (free tier). Defer until clear whether a live URL is required for target interviews. Docker Compose local setup is sufficient for a technical review.
 
 ---
 
@@ -158,4 +169,7 @@ React + TypeScript + Vite SPA in `dashboard/`. Hits the `/stats/*` and existing 
 | 5 | API | Queryable endpoints |
 | 6 | pgvector | Semantic dedup |
 | 7 | Dashboard UI | Visual proof at one URL |
-| 8 | Deploy + README | Reviewer-ready in 5 min |
+| 8A | FastMCP | MCP tool exposure |
+| 8B | Eval grid | Per-signal results table in dashboard |
+| 8C | README | Reviewer-ready in 5 min |
+| 8D | Deploy | Public URL (optional) |
