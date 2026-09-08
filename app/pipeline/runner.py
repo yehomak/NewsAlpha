@@ -34,6 +34,7 @@ async def _fetch_unprocessed(session: AsyncSession, limit: int) -> list[Event]:
     result = await session.execute(
         select(Event)
         .where(Event.processed.is_(False))
+        .where(Event.dedup_skipped.is_(False))
         .where(Event.fetched_at >= cutoff)
         .order_by(Event.fetched_at.asc())
         .limit(limit)

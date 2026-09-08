@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -50,6 +51,15 @@ class Event(Base):
     processed: Mapped[bool] = mapped_column(Boolean, default=False)
     ticker_hints: Mapped[list[str] | None] = mapped_column(JSONB)
     coverage_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    # semantic dedup fields (Stage 6)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
+    dedup_skipped: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    similar_to_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("events.id"), nullable=True
+    )
+    similarity_score: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     signals: Mapped[list["Signal"]] = relationship(back_populates="event")
 
