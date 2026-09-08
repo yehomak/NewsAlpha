@@ -4,7 +4,7 @@ Financial news → LLM signal extraction → ground-truth eval harness.
 
 ## What this is
 
-A pipeline that ingests financial/tech news, extracts company signals via LangGraph reasoning chains (Claude Sonnet for reasoning, Haiku for cheap extraction), and measures directional accuracy against actual T+5 stock price movement. The eval harness is the differentiator — signals are measured, not vibed.
+A pipeline that ingests financial/tech news, extracts company signals via LangGraph reasoning chains (all Claude Haiku for cost control), and measures directional accuracy against actual T+5 stock price movement. The eval harness is the differentiator — signals are measured, not vibed.
 
 ## Architecture
 
@@ -27,10 +27,11 @@ FastMCP → MCP tool exposure
 
 - FastAPI (async) + SQLAlchemy 2.0 async + Alembic + asyncpg
 - PostgreSQL 16 + pgvector (semantic dedup in Stage 6)
-- LangGraph — extract → resolve → reason chain
-- Claude API: Sonnet for reasoning chain, Haiku for entity extraction
-- Langfuse (self-hosted) — every LLM call traced, `langfuse_trace_id` stored on Signal
-- APScheduler — hourly ingestion, daily eval job
+- LangGraph — extract → resolve → reason chain (all Haiku, ~$0.001/article)
+- Claude Haiku (`claude-haiku-4-5-20251001`) for all LLM nodes
+- Langfuse (self-hosted on port 3000) — every LLM call traced, `langfuse_trace_id` stored on Signal; SDK pinned to `<3.0.0`
+- APScheduler — hourly ingestion, 30-min pipeline, 6h eval job
+- yfinance — T+5 price fetches for eval
 - pydantic-settings for config (`app/config.py`, reads `.env`)
 - structlog — structured JSON logging throughout
 
@@ -40,7 +41,11 @@ FastMCP → MCP tool exposure
 
 **Pydantic for LLM output** — all Claude responses validated through Pydantic models before touching the DB.
 
-**Ticker resolver pattern** — LLM proposes ticker → validate against S&P 500 + NASDAQ whitelist → reject if no match. Never trust raw LLM ticker output.
+**Ticker resolver pattern** — Alpaca hint fast-path (if ticker already in `SIGNAL_UNIVERSE_SET`, skip LLM). Otherwise: LLM proposes ticker → validate against `SIGNAL_UNIVERSE_SET` (100 curated tickers) → reject if not in universe. Never trust raw LLM ticker output.
+
+**Signal universe** — 100 tickers (`app/pipeline/universe.py`), curated by sector. Excludes utilities, REITs, gold miners, commodity E&P. Alpaca news API pre-filtered via `symbols=` param. Both resolver paths gate on `SIGNAL_UNIVERSE_SET`.
+
+**Enum serialization** — `Mapped[Direction]` and `Mapped[EventType]` use `values_callable=lambda obj: [e.value for e in obj]` to make SQLAlchemy send lowercase values matching PostgreSQL enum labels. Always include this on any new enum-typed column.
 
 **Cost tracking** — every LLM call records input + output tokens × price to `signals.cost_usd`. Use `anthropic` SDK usage response for this.
 
@@ -92,7 +97,19 @@ All tooling is set up and merged to `main`:
 - `secret-scan.sh` — scans written files for hardcoded secrets
 - `prompt-guard.sh` — blocks destructive DB operations without confirmation
 
+## API endpoints
+
+- `GET /health` — liveness check
+- `POST /ingestion/trigger` — manual ingest run (202)
+- `GET /ingestion/status` — event count + last fetch time
+- `POST /signals/trigger` — manual pipeline run (202)
+- `GET /signals` — list signals; filters: `ticker`, `direction`, `min_confidence`; pagination: `limit`, `offset`; inlines `return_pct` + `correct` when eval exists
+- `GET /signals/{id}` — single signal with eval result
+- `POST /eval/trigger` — manual eval run (202)
+- `GET /eval/summary` — overall accuracy %, avg return, pending count, breakdown by direction and event_type
+
 ## Current stage
 
-Stages 1–3 complete: skeleton, ingestion pipeline, LangGraph signal chain all merged to main.
-Next: Stage 4 — T+5 ground-truth eval with yfinance.
+Stages 1–5 complete: skeleton, ingestion, LangGraph signal chain, T+5 eval harness, query API — all merged to main.
+Pipeline live: collecting signals, Langfuse tracing active (self-hosted).
+Next: Stage 6 — pgvector semantic dedup.

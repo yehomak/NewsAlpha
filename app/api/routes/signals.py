@@ -1,10 +1,11 @@
 from datetime import datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.models import Direction, EventType, Signal
 from app.db.session import get_session
@@ -24,8 +25,19 @@ class SignalOut(BaseModel):
     cost_usd: Decimal
     langfuse_trace_id: str | None
     created_at: datetime
+    # eval fields — None until T+5 elapsed
+    return_pct: float | None = None
+    correct: bool | None = None
 
     model_config = {"from_attributes": True}
+
+    @classmethod
+    def from_orm_with_eval(cls, signal: Signal) -> "SignalOut":
+        obj = cls.model_validate(signal)
+        if signal.eval_result:
+            obj.return_pct = signal.eval_result.return_pct
+            obj.correct = signal.eval_result.correct
+        return obj
 
 
 class TriggerResponse(BaseModel):
@@ -43,10 +55,37 @@ async def list_signals(
     limit: int = Query(default=50, le=200),
     offset: int = Query(default=0, ge=0),
     ticker: str | None = Query(default=None),
+    direction: Direction | None = Query(default=None),
+    min_confidence: float | None = Query(default=None, ge=0.0, le=1.0),
     session: AsyncSession = Depends(get_session),
-) -> list[Signal]:
-    stmt = select(Signal).order_by(Signal.created_at.desc()).limit(limit).offset(offset)
+) -> list[SignalOut]:
+    stmt = (
+        select(Signal)
+        .options(selectinload(Signal.eval_result))
+        .order_by(Signal.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
     if ticker:
         stmt = stmt.where(Signal.ticker == ticker.upper())
+    if direction:
+        stmt = stmt.where(Signal.direction == direction)
+    if min_confidence is not None:
+        stmt = stmt.where(Signal.confidence >= min_confidence)
+
     result = await session.execute(stmt)
-    return list(result.scalars().all())
+    return [SignalOut.from_orm_with_eval(s) for s in result.scalars().all()]
+
+
+@router.get("/{signal_id}", response_model=SignalOut)
+async def get_signal(
+    signal_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> SignalOut:
+    result = await session.execute(
+        select(Signal).where(Signal.id == signal_id).options(selectinload(Signal.eval_result))
+    )
+    signal = result.scalar_one_or_none()
+    if signal is None:
+        raise HTTPException(status_code=404, detail="Signal not found")
+    return SignalOut.from_orm_with_eval(signal)
