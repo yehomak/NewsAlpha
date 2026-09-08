@@ -7,6 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Event
 
+_SEMANTIC_DEDUP_THRESHOLD = 0.95  # cosine similarity; <=> distance < 0.05
+_SEMANTIC_WINDOW_HOURS = 24
+
 
 def normalize_url(url: str) -> str:
     url = re.sub(r"\?.*$", "", url)
@@ -30,6 +33,32 @@ def is_stale(published_at: datetime | None, max_age_days: int = 7) -> bool:
 async def find_by_hash(session: AsyncSession, url_hash: str) -> Event | None:
     result = await session.execute(select(Event).where(Event.url_hash == url_hash))
     return result.scalar_one_or_none()
+
+
+async def find_semantic_duplicate(
+    session: AsyncSession,
+    embedding: list[float],
+) -> tuple[Event, float] | None:
+    """Return (event, similarity_score) if a near-identical event exists in the last 24h."""
+    cutoff = datetime.now(UTC) - timedelta(hours=_SEMANTIC_WINDOW_HOURS)
+    # pgvector <=> is cosine distance (0=identical); similarity = 1 - distance
+    distance_threshold = 1.0 - _SEMANTIC_DEDUP_THRESHOLD
+    result = await session.execute(
+        select(Event, (1.0 - Event.embedding.cosine_distance(embedding)).label("similarity"))
+        .where(
+            Event.embedding.is_not(None),
+            Event.dedup_skipped.is_(False),
+            Event.published_at >= cutoff,
+            Event.embedding.cosine_distance(embedding) < distance_threshold,
+        )
+        .order_by(Event.embedding.cosine_distance(embedding))
+        .limit(1)
+    )
+    row = result.first()
+    if row is None:
+        return None
+    event, similarity = row
+    return event, float(similarity)
 
 
 async def find_time_domain_duplicate(
