@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel
@@ -131,5 +131,5 @@ async def eval_summary(session: AsyncSession = Depends(get_session)) -> EvalSumm
         avg_return_pct=avg_return_pct,
         by_direction=by_direction,
         by_event_type=by_event_type,
-        as_of=datetime.utcnow(),
+        as_of=datetime.now(UTC),
     )
