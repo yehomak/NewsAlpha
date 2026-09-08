@@ -74,6 +74,7 @@ async def _store_article(session: AsyncSession, article: RawArticle) -> bool:
                 ticker_hints=article.ticker_hints or None,
                 coverage_count=1,
                 embedding=embedding,
+                processed=True,  # skip LLM pipeline — dedup_skipped explains why
                 dedup_skipped=True,
                 similar_to_id=matched_event.id,
                 similarity_score=score,
