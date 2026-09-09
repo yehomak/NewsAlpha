@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import case, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.ingestion.pipeline as ingestion_pipeline
 from app.db.models import EvalResult, Event, Signal
 from app.db.session import get_session
 
@@ -49,7 +50,8 @@ class CostStats(BaseModel):
 
 
 class PipelineStats(BaseModel):
-    last_ingest_at: datetime | None
+    last_ingest_run_at: datetime | None  # job execution time (in-memory, resets on restart)
+    last_ingest_at: datetime | None  # when the last unique event was stored
     last_pipeline_at: datetime | None
     last_eval_at: datetime | None
     signals_today: int
@@ -219,6 +221,7 @@ async def pipeline_stats(session: AsyncSession = Depends(get_session)) -> Pipeli
     )
 
     return PipelineStats(
+        last_ingest_run_at=ingestion_pipeline.last_run_at,
         last_ingest_at=last_ingest,
         last_pipeline_at=last_pipeline,
         last_eval_at=last_eval,
