@@ -81,7 +81,7 @@ export function SignalFeed({ signals }: Props) {
                       <td colSpan={7} className="reasoning-expanded">
                         <div className="reasoning-full">{s.reasoning}</div>
                         <div className="reasoning-meta mono">
-                          signal #{s.id} · cost ${s.cost_usd.toFixed(4)} · {new Date(s.created_at).toUTCString()}
+                          signal #{s.id} · cost ${Number(s.cost_usd).toFixed(4)} · {new Date(s.created_at).toUTCString()}
                         </div>
                       </td>
                     </tr>

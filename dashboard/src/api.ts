@@ -86,7 +86,7 @@ export interface Signal {
   confidence: number;
   event_type: string;
   reasoning: string;
-  cost_usd: number;
+  cost_usd: string;  // FastAPI serializes Decimal as string
   created_at: string;
   return_pct: number | null;
   correct: boolean | null;

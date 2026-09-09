@@ -94,7 +94,7 @@ export function TickerModal({ ticker: t, onClose }: Props) {
               </div>
               <div className="modal-reasoning">{s.reasoning}</div>
               <div className="modal-signal-footer mono">
-                #{s.id} · ${s.cost_usd.toFixed(4)}
+                #{s.id} · ${Number(s.cost_usd).toFixed(4)}
               </div>
             </div>
           ))}
