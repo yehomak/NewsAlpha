@@ -25,6 +25,8 @@ dependencies = [
     # stage 6 — pgvector semantic dedup
     "pgvector>=0.3.0",
     "sentence-transformers>=3.0.0",
+    # stage 8a — MCP tool exposure
+    "fastmcp>=2.0.0,<3.0.0",
 ]
 
 [project.optional-dependencies]
