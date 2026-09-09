@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +21,10 @@ from app.ingestion.sources.rss import RssSource
 _MIN_BODY_LEN = 200  # chars below which we attempt a full trafilatura fetch
 
 log = structlog.get_logger()
+
+# In-memory timestamp updated on every ingest run (reset on container restart).
+# Distinct from max(Event.fetched_at) which only moves when new unique events are stored.
+last_run_at: datetime | None = None
 
 
 def _get_sources() -> list[NewsSource]:
@@ -103,6 +109,7 @@ async def ingest_from_source(source: NewsSource, session: AsyncSession) -> int:
 
 
 async def run_ingestion() -> int:
+    global last_run_at
     total = 0
     async with async_session_factory() as session:
         for source in _get_sources():
@@ -110,5 +117,6 @@ async def run_ingestion() -> int:
                 total += await ingest_from_source(source, session)
             except Exception:
                 log.exception("ingestion.source_failed", source=source.name)
+    last_run_at = datetime.now(UTC)
     log.info("ingestion.run_complete", total_stored=total)
     return total

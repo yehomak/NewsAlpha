@@ -9,7 +9,8 @@ async function get<T>(path: string): Promise<T> {
 // --- types ---
 
 export interface PipelineStats {
-  last_ingest_at: string | null;
+  last_ingest_run_at: string | null;  // when the ingest job last executed (resets on container restart)
+  last_ingest_at: string | null;      // when the last unique event was stored
   last_pipeline_at: string | null;
   last_eval_at: string | null;
   signals_today: number;
@@ -80,10 +81,13 @@ export interface EvalSummary {
 
 export interface Signal {
   id: number;
+  event_id: number;
   ticker: string;
   direction: string;
   confidence: number;
   event_type: string;
+  reasoning: string;
+  cost_usd: string;  // FastAPI serializes Decimal as string
   created_at: string;
   return_pct: number | null;
   correct: boolean | null;
@@ -98,3 +102,5 @@ export const fetchTickers = () => get<TickerStats[]>("/stats/tickers");
 export const fetchEvalSummary = () => get<EvalSummary>("/eval/summary");
 export const fetchSignals = (limit = 50) =>
   get<Signal[]>(`/signals?limit=${limit}`);
+export const fetchSignalsForTicker = (ticker: string, limit = 100) =>
+  get<Signal[]>(`/signals?ticker=${encodeURIComponent(ticker)}&limit=${limit}`);

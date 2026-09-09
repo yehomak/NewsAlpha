@@ -18,26 +18,49 @@ function fmt(iso: string | null): string {
 }
 
 export function ProcessTimeline({ pipeline, events, costs }: Props) {
-  const rows: { label: string; value: string }[] = [
-    { label: "Last ingest", value: fmt(pipeline?.last_ingest_at ?? null) },
+  const lifetimeAcceptRate =
+    costs != null && events != null && events.processed > 0
+      ? `${Math.round((costs.signal_count / events.processed) * 100)}%`
+      : "—";
+
+  const rejectedTotal =
+    events != null && costs != null
+      ? events.processed - costs.signal_count
+      : null;
+
+  const rows: { label: string; value: string; dim?: boolean }[] = [
+    { label: "Ingest job ran", value: fmt(pipeline?.last_ingest_run_at ?? null) },
+    { label: "Last new event stored", value: fmt(pipeline?.last_ingest_at ?? null), dim: true },
     { label: "Last pipeline run", value: fmt(pipeline?.last_pipeline_at ?? null) },
     { label: "Last eval run", value: fmt(pipeline?.last_eval_at ?? null) },
     { label: "Signals today", value: String(pipeline?.signals_today ?? "—") },
     { label: "Events today", value: String(pipeline?.events_today ?? "—") },
     {
-      label: "Events → no signal",
-      value: pipeline != null ? String(pipeline.events_without_signal) : "—",
+      label: "Lifetime accept rate",
+      value: lifetimeAcceptRate,
     },
     {
-      label: "Signal accept rate",
-      value:
-        pipeline != null && pipeline.events_today > 0
-          ? `${Math.round((pipeline.signals_today / pipeline.events_today) * 100)}%`
-          : "—",
+      label: "Rejected / truncated",
+      value: rejectedTotal != null ? String(rejectedTotal) : "—",
+      dim: true,
     },
-    { label: "Sources active", value: String(events?.by_source.length ?? "—") },
-    { label: "Dedup skipped", value: String(events?.dedup_skipped ?? "—") },
-    { label: "Pipeline total cost", value: costs != null ? `$${costs.total_cost_usd.toFixed(4)}` : "—" },
+    {
+      label: "Events → no signal (today)",
+      value: pipeline != null ? String(pipeline.events_without_signal) : "—",
+      dim: true,
+    },
+    { label: "Active sources", value: String(events?.by_source.length ?? "—") },
+    { label: "Dedup skipped (total)", value: String(events?.dedup_skipped ?? "—") },
+    {
+      label: "Pipeline cost (tracked)",
+      value: costs != null ? `$${costs.total_cost_usd.toFixed(4)}` : "—",
+    },
+    {
+      label: "Avg cost / signal",
+      value: costs?.avg_cost_per_signal != null
+        ? `$${costs.avg_cost_per_signal.toFixed(4)}`
+        : "—",
+    },
   ];
 
   return (
@@ -46,7 +69,7 @@ export function ProcessTimeline({ pipeline, events, costs }: Props) {
       {rows.map(r => (
         <div className="timeline-row" key={r.label}>
           <span className="timeline-label">{r.label}</span>
-          <span className={`timeline-value mono ${r.value === "—" ? "muted" : ""}`}>
+          <span className={`timeline-value mono ${!r.value || r.value === "—" ? "muted" : r.dim ? "dim" : ""}`}>
             {r.value}
           </span>
         </div>

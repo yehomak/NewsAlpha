@@ -68,7 +68,7 @@ export function CostPanel({ costs }: Props) {
               tickFormatter={v => `$${v}`}
             />
             <Tooltip
-              formatter={(v: number) => [`$${v.toFixed(4)}`, "cost"]}
+              formatter={(v) => [`$${Number(v).toFixed(4)}`, "cost"]}
               contentStyle={{
                 background: "var(--bg-card)",
                 border: "1px solid var(--border)",
