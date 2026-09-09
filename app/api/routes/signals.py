@@ -21,6 +21,7 @@ class SignalOut(BaseModel):
     direction: Direction
     confidence: float
     event_type: EventType
+    event_title: str | None = None
     reasoning: str
     cost_usd: Decimal
     langfuse_trace_id: str | None
@@ -34,6 +35,8 @@ class SignalOut(BaseModel):
     @classmethod
     def from_orm_with_eval(cls, signal: Signal) -> "SignalOut":
         obj = cls.model_validate(signal)
+        if signal.event:
+            obj.event_title = signal.event.title
         if signal.eval_result:
             obj.return_pct = signal.eval_result.return_pct
             obj.correct = signal.eval_result.correct
@@ -52,7 +55,7 @@ async def trigger_pipeline(background_tasks: BackgroundTasks) -> TriggerResponse
 
 @router.get("", response_model=list[SignalOut])
 async def list_signals(
-    limit: int = Query(default=50, le=200),
+    limit: int = Query(default=50, le=500),
     offset: int = Query(default=0, ge=0),
     ticker: str | None = Query(default=None),
     direction: Direction | None = Query(default=None),
@@ -61,7 +64,7 @@ async def list_signals(
 ) -> list[SignalOut]:
     stmt = (
         select(Signal)
-        .options(selectinload(Signal.eval_result))
+        .options(selectinload(Signal.eval_result), selectinload(Signal.event))
         .order_by(Signal.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -83,7 +86,9 @@ async def get_signal(
     session: AsyncSession = Depends(get_session),
 ) -> SignalOut:
     result = await session.execute(
-        select(Signal).where(Signal.id == signal_id).options(selectinload(Signal.eval_result))
+        select(Signal)
+        .where(Signal.id == signal_id)
+        .options(selectinload(Signal.eval_result), selectinload(Signal.event))
     )
     signal = result.scalar_one_or_none()
     if signal is None:

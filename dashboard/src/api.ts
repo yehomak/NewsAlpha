@@ -86,6 +86,7 @@ export interface Signal {
   direction: string;
   confidence: number;
   event_type: string;
+  event_title: string | null;
   reasoning: string;
   cost_usd: string;  // FastAPI serializes Decimal as string
   created_at: string;
@@ -104,3 +105,4 @@ export const fetchSignals = (limit = 50) =>
   get<Signal[]>(`/signals?limit=${limit}`);
 export const fetchSignalsForTicker = (ticker: string, limit = 100) =>
   get<Signal[]>(`/signals?ticker=${encodeURIComponent(ticker)}&limit=${limit}`);
+export const fetchAllSignals = () => get<Signal[]>("/signals?limit=500");
