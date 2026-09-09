@@ -18,6 +18,7 @@ import type {
 import { HeroMetrics } from "./sections/HeroMetrics";
 import { SignalFeed } from "./sections/SignalFeed";
 import { TickerGrid } from "./sections/TickerGrid";
+import { TickerModal } from "./sections/TickerModal";
 import { EvalBreakdown } from "./sections/EvalBreakdown";
 import { EventIntelligence } from "./sections/EventIntelligence";
 import { CostPanel } from "./sections/CostPanel";
@@ -47,6 +48,7 @@ export default function App() {
   const [tickers, setTickers] = useState<TickerStats[] | null>(null);
   const [evalSummary, setEvalSummary] = useState<EvalSummary | null>(null);
   const [signals, setSignals] = useState<Signal[] | null>(null);
+  const [selectedTicker, setSelectedTicker] = useState<TickerStats | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -95,11 +97,11 @@ export default function App() {
       <main className="main">
         {error && <div className="error">API error: {error}</div>}
 
-        <HeroMetrics pipeline={pipeline} costs={costs} evalSummary={evalSummary} />
+        <HeroMetrics pipeline={pipeline} costs={costs} evalSummary={evalSummary} events={events} />
 
         <div className="two-col">
           <SignalFeed signals={signals} />
-          <TickerGrid tickers={tickers} />
+          <TickerGrid tickers={tickers} onSelect={setSelectedTicker} />
         </div>
 
         <div className="two-col">
@@ -112,6 +114,13 @@ export default function App() {
           <ProcessTimeline pipeline={pipeline} events={events} costs={costs} />
         </div>
       </main>
+
+      {selectedTicker && (
+        <TickerModal
+          ticker={selectedTicker}
+          onClose={() => setSelectedTicker(null)}
+        />
+      )}
     </div>
   );
 }

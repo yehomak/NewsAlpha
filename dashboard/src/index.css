@@ -425,6 +425,9 @@ tr:hover td { background: var(--bg-hover); }
 }
 .ticker-card:hover { border-color: var(--accent); }
 
+.ticker-card.clickable { cursor: pointer; }
+.ticker-card.clickable:hover { border-color: var(--accent); background: var(--bg-hover); }
+
 .ticker-card-header {
   display: flex;
   justify-content: space-between;
@@ -457,6 +460,150 @@ tr:hover td { background: var(--bg-hover); }
 }
 .ticker-accuracy.good { color: var(--bull); }
 .ticker-accuracy.bad  { color: var(--bear); }
+
+/* ── reasoning cell in signal feed ── */
+.reasoning-cell {
+  font-size: 11px;
+  color: var(--text-muted);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.reasoning-cell:hover { color: var(--text-dim); }
+
+.reasoning-expanded td {
+  background: var(--bg-hover);
+  padding: 12px 0;
+}
+.reasoning-full {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  padding: 0 0 8px 0;
+}
+.reasoning-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.timeline-value.dim { color: var(--text-muted); }
+
+/* ── modal ── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow-y: auto;
+}
+
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 720px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  position: relative;
+  padding: 20px 52px 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.modal-ticker {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.modal-accuracy {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+.modal-accuracy.good { color: var(--bull); }
+.modal-accuracy.bad  { color: var(--bear); }
+
+.modal-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-close:hover { border-color: var(--bear); color: var(--bear); }
+
+.modal-body {
+  overflow-y: auto;
+  padding: 12px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-signal {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: var(--bg);
+}
+
+.modal-signal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.modal-reasoning {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin-bottom: 6px;
+}
+
+.modal-signal-footer {
+  font-size: 10px;
+  color: var(--text-muted);
+}
 
 /* ── recharts overrides ── */
 .recharts-tooltip-wrapper { outline: none; }

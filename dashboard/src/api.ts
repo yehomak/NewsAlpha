@@ -80,10 +80,13 @@ export interface EvalSummary {
 
 export interface Signal {
   id: number;
+  event_id: number;
   ticker: string;
   direction: string;
   confidence: number;
   event_type: string;
+  reasoning: string;
+  cost_usd: number;
   created_at: string;
   return_pct: number | null;
   correct: boolean | null;
@@ -98,3 +101,5 @@ export const fetchTickers = () => get<TickerStats[]>("/stats/tickers");
 export const fetchEvalSummary = () => get<EvalSummary>("/eval/summary");
 export const fetchSignals = (limit = 50) =>
   get<Signal[]>(`/signals?limit=${limit}`);
+export const fetchSignalsForTicker = (ticker: string, limit = 100) =>
+  get<Signal[]>(`/signals?ticker=${encodeURIComponent(ticker)}&limit=${limit}`);
