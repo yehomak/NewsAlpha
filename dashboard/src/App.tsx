@@ -81,7 +81,7 @@ export default function App() {
         <span className="header-brand">butterfly-effect</span>
         <div className="header-status">
           <span className="status-dot" />
-          ingest {relativeTime(pipeline?.last_ingest_at ?? null)}
+          ingest {relativeTime(pipeline?.last_ingest_run_at ?? null)}
           &nbsp;·&nbsp;
           pipeline {relativeTime(pipeline?.last_pipeline_at ?? null)}
         </div>

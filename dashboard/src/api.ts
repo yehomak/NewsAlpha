@@ -9,7 +9,8 @@ async function get<T>(path: string): Promise<T> {
 // --- types ---
 
 export interface PipelineStats {
-  last_ingest_at: string | null;
+  last_ingest_run_at: string | null;  // when the ingest job last executed (resets on container restart)
+  last_ingest_at: string | null;      // when the last unique event was stored
   last_pipeline_at: string | null;
   last_eval_at: string | null;
   signals_today: number;

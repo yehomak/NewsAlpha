@@ -29,7 +29,8 @@ export function ProcessTimeline({ pipeline, events, costs }: Props) {
       : null;
 
   const rows: { label: string; value: string; dim?: boolean }[] = [
-    { label: "Last ingest", value: fmt(pipeline?.last_ingest_at ?? null) },
+    { label: "Ingest job ran", value: fmt(pipeline?.last_ingest_run_at ?? null) },
+    { label: "Last new event stored", value: fmt(pipeline?.last_ingest_at ?? null), dim: true },
     { label: "Last pipeline run", value: fmt(pipeline?.last_pipeline_at ?? null) },
     { label: "Last eval run", value: fmt(pipeline?.last_eval_at ?? null) },
     { label: "Signals today", value: String(pipeline?.signals_today ?? "—") },
