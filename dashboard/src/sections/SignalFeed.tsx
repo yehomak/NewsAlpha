@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { Signal } from "../api";
 
 interface Props {
@@ -44,51 +44,52 @@ export function SignalFeed({ signals }: Props) {
             </tr>
           </thead>
           <tbody>
-            {signals.slice(0, 30).map(s => (
-              <>
-                <tr
-                  key={s.id}
-                  style={{ cursor: "pointer" }}
-                  onClick={() => setExpanded(expanded === s.id ? null : s.id)}
-                >
-                  <td className="ticker-cell">{s.ticker}</td>
-                  <td>
-                    <span className={`dir-chip ${s.direction}`}>{s.direction}</span>
-                  </td>
-                  <td>
-                    <div className="conf-bar-wrap">
-                      <div className="conf-bar-bg">
-                        <div
-                          className="conf-bar-fill"
-                          style={{ width: `${Math.round(s.confidence * 100)}%` }}
-                        />
-                      </div>
-                      <span className="conf-val">{Math.round(s.confidence * 100)}</span>
-                    </div>
-                  </td>
-                  <td className="mono" style={{ fontSize: 11 }}>{s.event_type}</td>
-                  <td className="reasoning-cell" title={s.reasoning}>
-                    {s.reasoning.length > 90
-                      ? s.reasoning.slice(0, 90) + "…"
-                      : s.reasoning}
-                  </td>
-                  <td className="mono" style={{ color: "var(--text-muted)", fontSize: 11 }}>
-                    {timeAgo(s.created_at)}
-                  </td>
-                  <td><CorrectBadge correct={s.correct} returnPct={s.return_pct} /></td>
-                </tr>
-                {expanded === s.id && (
-                  <tr key={`${s.id}-exp`}>
-                    <td colSpan={7} className="reasoning-expanded">
-                      <div className="reasoning-full">{s.reasoning}</div>
-                      <div className="reasoning-meta mono">
-                        signal #{s.id} · cost ${s.cost_usd.toFixed(4)} · {new Date(s.created_at).toUTCString()}
+            {signals.slice(0, 30).flatMap(s => {
+              const isOpen = expanded === s.id;
+              const rows = [
+                <Fragment key={s.id}>
+                  <tr
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setExpanded(isOpen ? null : s.id)}
+                  >
+                    <td className="ticker-cell">{s.ticker}</td>
+                    <td>
+                      <span className={`dir-chip ${s.direction}`}>{s.direction}</span>
+                    </td>
+                    <td>
+                      <div className="conf-bar-wrap">
+                        <div className="conf-bar-bg">
+                          <div
+                            className="conf-bar-fill"
+                            style={{ width: `${Math.round(s.confidence * 100)}%` }}
+                          />
+                        </div>
+                        <span className="conf-val">{Math.round(s.confidence * 100)}</span>
                       </div>
                     </td>
+                    <td className="mono" style={{ fontSize: 11 }}>{s.event_type}</td>
+                    <td className="reasoning-cell" title={s.reasoning}>
+                      {s.reasoning.length > 90 ? s.reasoning.slice(0, 90) + "…" : s.reasoning}
+                    </td>
+                    <td className="mono" style={{ color: "var(--text-muted)", fontSize: 11 }}>
+                      {timeAgo(s.created_at)}
+                    </td>
+                    <td><CorrectBadge correct={s.correct} returnPct={s.return_pct} /></td>
                   </tr>
-                )}
-              </>
-            ))}
+                  {isOpen && (
+                    <tr>
+                      <td colSpan={7} className="reasoning-expanded">
+                        <div className="reasoning-full">{s.reasoning}</div>
+                        <div className="reasoning-meta mono">
+                          signal #{s.id} · cost ${s.cost_usd.toFixed(4)} · {new Date(s.created_at).toUTCString()}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>,
+              ];
+              return rows;
+            })}
           </tbody>
         </table>
       </div>
