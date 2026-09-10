@@ -139,12 +139,11 @@ export default function App() {
             <EventIntelligence events={events} />
           </div>
 
-          <div className="two-col">
+          <div className="three-col">
             <CostPanel costs={costs} />
             <ProcessTimeline pipeline={pipeline} events={events} costs={costs} />
+            <PipelineIntel pipeline={pipeline} events={events} costs={costs} signals={signals} />
           </div>
-
-          <PipelineIntel pipeline={pipeline} events={events} costs={costs} signals={signals} />
         </main>
       )}
 
