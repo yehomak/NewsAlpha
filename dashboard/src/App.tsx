@@ -127,6 +127,8 @@ export default function App() {
 
           <HeroMetrics pipeline={pipeline} costs={costs} evalSummary={evalSummary} events={events} />
 
+          <PipelineIntel pipeline={pipeline} events={events} costs={costs} signals={signals} />
+
           <SignalProfile signals={signals} tickers={tickers} />
 
           <div className="two-col">
@@ -139,11 +141,11 @@ export default function App() {
             <EventIntelligence events={events} />
           </div>
 
-          <div className="three-col">
+          <div className="two-col">
             <CostPanel costs={costs} />
             <ProcessTimeline pipeline={pipeline} events={events} costs={costs} />
-            <PipelineIntel pipeline={pipeline} events={events} costs={costs} signals={signals} />
           </div>
+
         </main>
       )}
 
