@@ -23,15 +23,25 @@ const ET_COLOR: Record<string, string> = {
   general: "var(--text-muted)",
 };
 
+const CONF_BUCKETS = [
+  { label: "≥0.85", key: "peak",   min: 0.85, max: 1.01, color: "var(--bull)" },
+  { label: "0.7–",  key: "high",   min: 0.70, max: 0.85, color: "var(--accent)" },
+  { label: "0.5–",  key: "mid",    min: 0.50, max: 0.70, color: "var(--text-dim)" },
+  { label: "<0.5",  key: "low",    min: 0,    max: 0.50, color: "var(--bear)" },
+];
+
 export function SignalProfile({ signals, tickers }: Props) {
   const etCounts: Record<string, number> = {};
   const dirCounts: Record<string, number> = { bullish: 0, bearish: 0, neutral: 0 };
+  const confCounts: Record<string, number> = { peak: 0, high: 0, mid: 0, low: 0 };
 
   if (signals) {
     for (const s of signals) {
       const et = s.event_type || "general";
       etCounts[et] = (etCounts[et] || 0) + 1;
       dirCounts[s.direction] = (dirCounts[s.direction] || 0) + 1;
+      const bucket = CONF_BUCKETS.find(b => s.confidence >= b.min && s.confidence < b.max);
+      if (bucket) confCounts[bucket.key]++;
     }
   }
 
@@ -48,6 +58,8 @@ export function SignalProfile({ signals, tickers }: Props) {
     bearish: "var(--bear)",
     neutral: "var(--neutral)",
   };
+
+  const maxColBar = 60;
 
   return (
     <div className="card">
@@ -72,25 +84,55 @@ export function SignalProfile({ signals, tickers }: Props) {
             </div>
           ))}
 
-          <div className="profile-sub" style={{ marginTop: 20 }}>Direction Split</div>
-          <div className="dir-split-row">
-            {Object.entries(dirCounts).map(([dir, count]) => (
-              <div key={dir} className="dir-split-item">
-                <div className="dir-split-bar-wrap">
-                  <div
-                    className="dir-split-bar"
-                    style={{
-                      height: `${total > 0 ? Math.round((count / total) * 60) : 0}px`,
-                      background: dirColor[dir] ?? "var(--neutral)",
-                    }}
-                  />
-                </div>
-                <div className="dir-split-pct" style={{ color: dirColor[dir] }}>
-                  {total > 0 ? Math.round((count / total) * 100) : 0}%
-                </div>
-                <div className="dir-split-label">{dir}</div>
+          <div style={{ display: "flex", gap: 32, marginTop: 20 }}>
+            <div>
+              <div className="profile-sub">Direction</div>
+              <div className="dir-split-row">
+                {Object.entries(dirCounts).map(([dir, count]) => (
+                  <div key={dir} className="dir-split-item">
+                    <div className="dir-split-bar-wrap">
+                      <div
+                        className="dir-split-bar"
+                        style={{
+                          height: `${total > 0 ? Math.round((count / total) * maxColBar) : 0}px`,
+                          background: dirColor[dir] ?? "var(--neutral)",
+                        }}
+                      />
+                    </div>
+                    <div className="dir-split-pct" style={{ color: dirColor[dir] }}>
+                      {total > 0 ? Math.round((count / total) * 100) : 0}%
+                    </div>
+                    <div className="dir-split-label">{dir.slice(0, 4)}</div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            <div>
+              <div className="profile-sub">Confidence</div>
+              <div className="dir-split-row">
+                {CONF_BUCKETS.map(b => {
+                  const count = confCounts[b.key] ?? 0;
+                  return (
+                    <div key={b.key} className="dir-split-item">
+                      <div className="dir-split-bar-wrap">
+                        <div
+                          className="dir-split-bar"
+                          style={{
+                            height: `${total > 0 ? Math.round((count / total) * maxColBar) : 0}px`,
+                            background: b.color,
+                          }}
+                        />
+                      </div>
+                      <div className="dir-split-pct" style={{ color: b.color }}>
+                        {total > 0 ? Math.round((count / total) * 100) : 0}%
+                      </div>
+                      <div className="dir-split-label">{b.label}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 

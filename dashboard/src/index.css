@@ -706,6 +706,89 @@ tr:hover td { background: var(--bg-hover); }
   color: var(--text-muted);
 }
 
+/* ── pipeline intel ── */
+.funnel-rows { display: flex; flex-direction: column; gap: 0; }
+
+.funnel-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.funnel-row:last-child { border-bottom: none; }
+.funnel-total .funnel-label { color: var(--text); font-weight: 600; }
+
+.funnel-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.funnel-val {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.funnel-pct {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.sparkbar-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 80px;
+  padding-bottom: 18px;
+  position: relative;
+}
+
+.sparkbar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+  height: 100%;
+  position: relative;
+}
+
+.sparkbar {
+  width: 100%;
+  background: var(--accent);
+  opacity: 0.7;
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+}
+
+.sparkbar-tip {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.sparkbar-label {
+  position: absolute;
+  bottom: -16px;
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.outlier-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+}
+.outlier-row:last-child { border-bottom: none; }
+
 /* ── recharts overrides ── */
 .recharts-tooltip-wrapper { outline: none; }
 .recharts-default-tooltip {

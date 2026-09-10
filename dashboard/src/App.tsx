@@ -25,6 +25,7 @@ import { EventIntelligence } from "./sections/EventIntelligence";
 import { CostPanel } from "./sections/CostPanel";
 import { ProcessTimeline } from "./sections/ProcessTimeline";
 import { SignalProfile } from "./sections/SignalProfile";
+import { PipelineIntel } from "./sections/PipelineIntel";
 import { SignalLedger } from "./sections/SignalLedger";
 
 type Theme = "dark" | "light";
@@ -142,6 +143,8 @@ export default function App() {
             <CostPanel costs={costs} />
             <ProcessTimeline pipeline={pipeline} events={events} costs={costs} />
           </div>
+
+          <PipelineIntel pipeline={pipeline} events={events} costs={costs} signals={signals} />
         </main>
       )}
 
