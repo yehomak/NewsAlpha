@@ -24,6 +24,7 @@ import { EvalBreakdown } from "./sections/EvalBreakdown";
 import { EventIntelligence } from "./sections/EventIntelligence";
 import { CostPanel } from "./sections/CostPanel";
 import { ProcessTimeline } from "./sections/ProcessTimeline";
+import { SignalProfile } from "./sections/SignalProfile";
 import { SignalLedger } from "./sections/SignalLedger";
 
 type Theme = "dark" | "light";
@@ -67,7 +68,7 @@ export default function App() {
       fetchCosts(30),
       fetchTickers(),
       fetchEvalSummary(),
-      fetchSignals(50),
+      fetchSignals(200),
       fetchAllSignals(),
     ])
       .then(([p, e, c, t, ev, s, all]) => {
@@ -124,6 +125,8 @@ export default function App() {
           {error && <div className="error">API error: {error}</div>}
 
           <HeroMetrics pipeline={pipeline} costs={costs} evalSummary={evalSummary} events={events} />
+
+          <SignalProfile signals={signals} tickers={tickers} />
 
           <div className="two-col">
             <SignalFeed signals={signals} />

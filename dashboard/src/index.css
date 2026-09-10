@@ -631,6 +631,81 @@ tr:hover td { background: var(--bg-hover); }
   color: var(--text-muted);
 }
 
+/* ── signal profile ── */
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+@media (max-width: 700px) { .profile-grid { grid-template-columns: 1fr; } }
+
+.profile-sub {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.profile-sub-note {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-muted);
+  opacity: 0.6;
+  margin-left: 6px;
+}
+
+.source-pct {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  width: 28px;
+  text-align: right;
+  margin-left: 4px;
+}
+
+.dir-split-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-end;
+  margin-top: 8px;
+}
+
+.dir-split-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.dir-split-bar-wrap {
+  display: flex;
+  align-items: flex-end;
+  height: 64px;
+}
+
+.dir-split-bar {
+  width: 28px;
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+  transition: height 0.3s;
+}
+
+.dir-split-pct {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dir-split-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
 /* ── recharts overrides ── */
 .recharts-tooltip-wrapper { outline: none; }
 .recharts-default-tooltip {
