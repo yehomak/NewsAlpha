@@ -106,6 +106,32 @@ body {
 
 .header-spacer { flex: 1; }
 
+.view-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2px;
+}
+.view-tab {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.2px;
+  transition: all 0.15s;
+}
+.view-tab:hover { color: var(--text-dim); }
+.view-tab.active {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
 .theme-btn {
   background: none;
   border: 1px solid var(--border);
@@ -604,6 +630,164 @@ tr:hover td { background: var(--bg-hover); }
   font-size: 10px;
   color: var(--text-muted);
 }
+
+/* ── signal profile ── */
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+@media (max-width: 700px) { .profile-grid { grid-template-columns: 1fr; } }
+
+.profile-sub {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.profile-sub-note {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-muted);
+  opacity: 0.6;
+  margin-left: 6px;
+}
+
+.source-pct {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  width: 28px;
+  text-align: right;
+  margin-left: 4px;
+}
+
+.dir-split-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-end;
+  margin-top: 8px;
+}
+
+.dir-split-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.dir-split-bar-wrap {
+  display: flex;
+  align-items: flex-end;
+  height: 64px;
+}
+
+.dir-split-bar {
+  width: 28px;
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+  transition: height 0.3s;
+}
+
+.dir-split-pct {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dir-split-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+/* ── pipeline intel ── */
+.funnel-rows { display: flex; flex-direction: column; gap: 0; }
+
+.funnel-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.funnel-row:last-child { border-bottom: none; }
+.funnel-total .funnel-label { color: var(--text); font-weight: 600; }
+
+.funnel-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.funnel-val {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.funnel-pct {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.sparkbar-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 80px;
+  padding-bottom: 18px;
+  position: relative;
+}
+
+.sparkbar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+  height: 100%;
+  position: relative;
+}
+
+.sparkbar {
+  width: 100%;
+  background: var(--accent);
+  opacity: 0.7;
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+}
+
+.sparkbar-tip {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.sparkbar-label {
+  position: absolute;
+  bottom: -16px;
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.outlier-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+}
+.outlier-row:last-child { border-bottom: none; }
 
 /* ── recharts overrides ── */
 .recharts-tooltip-wrapper { outline: none; }

@@ -6,6 +6,7 @@ import {
   fetchTickers,
   fetchEvalSummary,
   fetchSignals,
+  fetchAllSignals,
 } from "./api";
 import type {
   PipelineStats,
@@ -23,8 +24,12 @@ import { EvalBreakdown } from "./sections/EvalBreakdown";
 import { EventIntelligence } from "./sections/EventIntelligence";
 import { CostPanel } from "./sections/CostPanel";
 import { ProcessTimeline } from "./sections/ProcessTimeline";
+import { SignalProfile } from "./sections/SignalProfile";
+import { PipelineIntel } from "./sections/PipelineIntel";
+import { SignalLedger } from "./sections/SignalLedger";
 
 type Theme = "dark" | "light";
+type View  = "dashboard" | "ledger";
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "—";
@@ -48,7 +53,9 @@ export default function App() {
   const [tickers, setTickers] = useState<TickerStats[] | null>(null);
   const [evalSummary, setEvalSummary] = useState<EvalSummary | null>(null);
   const [signals, setSignals] = useState<Signal[] | null>(null);
+  const [allSignals, setAllSignals] = useState<Signal[] | null>(null);
   const [selectedTicker, setSelectedTicker] = useState<TickerStats | null>(null);
+  const [view, setView] = useState<View>("dashboard");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,15 +69,17 @@ export default function App() {
       fetchCosts(30),
       fetchTickers(),
       fetchEvalSummary(),
-      fetchSignals(50),
+      fetchSignals(200),
+      fetchAllSignals(),
     ])
-      .then(([p, e, c, t, ev, s]) => {
+      .then(([p, e, c, t, ev, s, all]) => {
         setPipeline(p);
         setEvents(e);
         setCosts(c);
         setTickers(t);
         setEvalSummary(ev);
         setSignals(s);
+        setAllSignals(all);
       })
       .catch((err: Error) => setError(err.message));
   }, []);
@@ -79,6 +88,22 @@ export default function App() {
     <div className="app">
       <header className="header">
         <span className="header-brand">butterfly-effect</span>
+
+        <div className="view-tabs">
+          <button
+            className={`view-tab${view === "dashboard" ? " active" : ""}`}
+            onClick={() => setView("dashboard")}
+          >
+            dashboard
+          </button>
+          <button
+            className={`view-tab${view === "ledger" ? " active" : ""}`}
+            onClick={() => setView("ledger")}
+          >
+            signal ledger
+          </button>
+        </div>
+
         <div className="header-status">
           <span className="status-dot" />
           ingest {relativeTime(pipeline?.last_ingest_run_at ?? null)}
@@ -94,26 +119,35 @@ export default function App() {
         </button>
       </header>
 
-      <main className="main">
-        {error && <div className="error">API error: {error}</div>}
+      {view === "ledger" ? (
+        <SignalLedger signals={allSignals} />
+      ) : (
+        <main className="main">
+          {error && <div className="error">API error: {error}</div>}
 
-        <HeroMetrics pipeline={pipeline} costs={costs} evalSummary={evalSummary} events={events} />
+          <HeroMetrics pipeline={pipeline} costs={costs} evalSummary={evalSummary} events={events} />
 
-        <div className="two-col">
-          <SignalFeed signals={signals} />
-          <TickerGrid tickers={tickers} onSelect={setSelectedTicker} />
-        </div>
+          <PipelineIntel pipeline={pipeline} events={events} costs={costs} signals={signals} />
 
-        <div className="two-col">
-          <EvalBreakdown evalSummary={evalSummary} />
-          <EventIntelligence events={events} />
-        </div>
+          <SignalProfile signals={signals} tickers={tickers} />
 
-        <div className="two-col">
-          <CostPanel costs={costs} />
-          <ProcessTimeline pipeline={pipeline} events={events} costs={costs} />
-        </div>
-      </main>
+          <div className="two-col">
+            <SignalFeed signals={signals} />
+            <TickerGrid tickers={tickers} onSelect={setSelectedTicker} />
+          </div>
+
+          <div className="two-col">
+            <EvalBreakdown evalSummary={evalSummary} />
+            <EventIntelligence events={events} />
+          </div>
+
+          <div className="two-col">
+            <CostPanel costs={costs} />
+            <ProcessTimeline pipeline={pipeline} events={events} costs={costs} />
+          </div>
+
+        </main>
+      )}
 
       {selectedTicker && (
         <TickerModal
