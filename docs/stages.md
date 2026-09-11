@@ -111,22 +111,19 @@ React + TypeScript + Vite SPA in `dashboard/`. Dark terminal aesthetic: monospac
 
 ---
 
-## Stage 8 — Dashboard Enhancements
+## Stage 8 — Dashboard Rework
 
-Extended the dashboard with deeper pipeline visibility and a new Signal Ledger view.
+Complete dashboard redesign — single page structured by pipeline stage, each section answering real questions about that stage with ratios, groups, and outliers.
 
-**New cards:**
-- **Pipeline Intelligence** (top of dashboard) — event→signal funnel, cost breakdown, daily sparkline, high conviction signals, most expensive signals
-- **Signal Profile** — event type mix, direction + confidence column charts side by side, top tickers by coverage
+**Five pipeline-stage sections:**
 
-**Signal Profile detail:**
-- Confidence buckets: `<0.5` (noise/red), `0.5–0.7` (mid/muted), `0.7–0.85` (high/amber), `≥0.85` (peak/green)
-- Direction split rendered as canvas bar charts
+1. **Ingestion** — total events, events today, active sources, dedup rate; source breakdown bars; processed rate callout
+2. **Extraction Funnel** — 4-step funnel (ingested → dedup removed → sent to LLM → signals stored) with absolute counts and retention % at every drop; acceptance rate + cost-per-attempt callouts
+3. **Signal Portfolio** — direction split, confidence buckets (`<0.5` noise / `0.5–0.7` low / `0.7–0.85` mid / `≥0.85` high), event type mix, top-8 tickers by coverage, last-10 signal feed
+4. **Ground Truth** — pending state until T+5 evals land; flips to accuracy breakdown by direction + event_type with color-coded accuracy rates
+5. **Cost & Efficiency** — total spend (real vs tracked), avg cost per signal, daily bar chart, efficiency callouts
 
-**Signal Ledger view** (toggle in header):
-- Canvas matrix — rows = news events grouped by event_type, columns = tickers sorted by coverage
-- Hover tooltips, DPR-corrected for Retina
-- Fetches all 500 signals in one call
+Earlier dashboard cards (PipelineIntel, SignalProfile, SignalLedger) replaced by this structure. Signal Ledger removed.
 
 ---
 
@@ -162,6 +159,30 @@ Zero cache reads/writes currently — system prompt (~800 tokens) re-sent on eve
 
 ---
 
+## Stage 9E — Visualization Tab
+
+Second dashboard tab: 2D/3D visualizations of signal data. Builds the portfolio story visually pre-eval; becomes dramatically more interesting after T+5 results land.
+
+**Visualizations (ranked by interview demo value):**
+
+### Pre-eval (available now)
+
+**Ticker × Confidence Scatter** — X: avg confidence, Y: signal count, color: last direction. Answers "where do we have high-conviction portfolio positions?" Post-eval: size encodes accuracy_pct. Canvas or D3.
+
+**Signal Timeline Heatmap** — rows = tickers (sorted by signal count), columns = days, cell color = direction, opacity = confidence. Shows the pipeline is alive with consistent directional views. Post-eval: ✓/✗ badge overlay per cell. Canvas (one rect per cell).
+
+**Extraction Funnel Sankey** — ingested → LLM → [stored | rejected_universe | no_signal | truncated] as a flow diagram. Tells the yield/cost story visually. D3 sankey or Canvas paths.
+
+### Post-eval (Sep 13+)
+
+**3D Accuracy Landscape** — X: confidence bucket, Z: event_type, Y: accuracy % as 3D bars or mesh surface. Rotation via OrbitControls. Answers "where does the model actually know what it's doing?" — the interview showstopper. Three.js.
+
+**Confidence Calibration Curve** — stated confidence (bucketed) vs actual accuracy % overlaid on the "perfectly calibrated" diagonal. Classic ML eval visualization. Proves whether the confidence score is meaningful ("overconfident in the 0.7–0.85 band"). Canvas or SVG. Low complexity, very high credibility.
+
+**Build plan:** ship Scatter + Heatmap now. Add placeholder panels for Accuracy Landscape + Calibration showing "waiting for T+5 data" — they light up automatically after Sep 13.
+
+---
+
 ## Stage 10 — Eval Grid
 
 New dashboard section: per-signal eval table once T+5 results land.
@@ -194,5 +215,6 @@ Railway is no longer free. Options if a public URL is needed: Fly.io (hobby tier
 | 9B | Pipeline cost tracking |
 | 9C | Prompt caching |
 | 9D | README |
+| 9E | Visualization tab |
 | 10 | Eval grid |
 | 11 | Deploy |
