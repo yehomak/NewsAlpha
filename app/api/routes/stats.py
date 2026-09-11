@@ -9,6 +9,10 @@ import app.ingestion.pipeline as ingestion_pipeline
 from app.db.models import EvalResult, Event, ExtractionAttempt, Signal
 from app.db.session import get_session
 
+# LLM spend from rejected/truncated calls before extraction_attempts existed (Sep 7-11).
+# Derived from Anthropic API export ($3.57 total) minus tracked signals.cost_usd ($1.794).
+_UNTRACKED_HISTORICAL_USD = 1.776
+
 router = APIRouter(prefix="/stats", tags=["stats"])
 
 
@@ -199,7 +203,7 @@ async def cost_stats(
         if d not in attempt_days:
             by_day_merged[d] = (cost, count)
 
-    total_cost = sum(c for c, _ in by_day_merged.values())
+    total_cost = sum(c for c, _ in by_day_merged.values()) + _UNTRACKED_HISTORICAL_USD
     signal_count = int(await session.scalar(select(func.count()).select_from(Signal)) or 0)
     avg_cost = round(total_cost / signal_count, 6) if signal_count > 0 else None
 
