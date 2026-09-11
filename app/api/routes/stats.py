@@ -6,7 +6,7 @@ from sqlalchemy import case, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.ingestion.pipeline as ingestion_pipeline
-from app.db.models import EvalResult, Event, Signal
+from app.db.models import EvalResult, Event, ExtractionAttempt, Signal
 from app.db.session import get_session
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -154,35 +154,57 @@ async def cost_stats(
     days: int = Query(default=30, ge=1, le=365),
     session: AsyncSession = Depends(get_session),
 ) -> CostStats:
-    total_cost = await session.scalar(select(func.sum(Signal.cost_usd)))
-    signal_count = int(await session.scalar(select(func.count()).select_from(Signal)) or 0)
-    avg_cost = await session.scalar(select(func.avg(Signal.cost_usd)))
+    # Total cost from extraction_attempts — captures all LLM spend including rejections.
+    # signal_count and avg are scoped to stored attempts so the average stays meaningful.
+    total_cost = float(await session.scalar(select(func.sum(ExtractionAttempt.cost_usd))) or 0)
+    signal_count = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(ExtractionAttempt)
+            .where(ExtractionAttempt.signal_id.isnot(None))
+        )
+        or 0
+    )
+    avg_cost = round(total_cost / signal_count, 6) if signal_count > 0 else None
 
     cutoff = datetime.now(UTC) - timedelta(days=days)
-    daily_rows = (
+
+    daily_cost_rows = (
+        await session.execute(
+            select(
+                func.date_trunc(text("'day'"), ExtractionAttempt.created_at).label("day"),
+                func.sum(ExtractionAttempt.cost_usd).label("cost_usd"),
+            )
+            .where(ExtractionAttempt.created_at >= cutoff)
+            .group_by(func.date_trunc(text("'day'"), ExtractionAttempt.created_at))
+            .order_by(func.date_trunc(text("'day'"), ExtractionAttempt.created_at).asc())
+        )
+    ).all()
+
+    daily_sig_rows = (
         await session.execute(
             select(
                 func.date_trunc(text("'day'"), Signal.created_at).label("day"),
-                func.sum(Signal.cost_usd).label("cost_usd"),
                 func.count(Signal.id).label("signal_count"),
             )
             .where(Signal.created_at >= cutoff)
             .group_by(func.date_trunc(text("'day'"), Signal.created_at))
-            .order_by(func.date_trunc(text("'day'"), Signal.created_at).asc())
         )
     ).all()
 
+    sig_by_day: dict[date, int] = {row.day.date(): int(row.signal_count) for row in daily_sig_rows}
+
     return CostStats(
-        total_cost_usd=round(float(total_cost or 0), 6),
-        avg_cost_per_signal=round(float(avg_cost), 6) if avg_cost is not None else None,
+        total_cost_usd=round(total_cost, 6),
+        avg_cost_per_signal=avg_cost,
         signal_count=signal_count,
         by_day=[
             CostDay(
                 date=row.day.date(),
                 cost_usd=round(float(row.cost_usd), 6),
-                signal_count=int(row.signal_count),
+                signal_count=sig_by_day.get(row.day.date(), 0),
             )
-            for row in daily_rows
+            for row in daily_cost_rows
         ],
     )
 
