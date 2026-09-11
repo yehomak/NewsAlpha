@@ -24,6 +24,14 @@ class Base(DeclarativeBase):
     pass
 
 
+class AttemptOutcome(StrEnum):
+    STORED = "stored"
+    REJECTED_UNIVERSE = "rejected_universe"
+    TRUNCATED = "truncated"
+    NO_SIGNAL = "no_signal"
+    ERROR = "error"
+
+
 class EventType(StrEnum):
     EARNINGS = "earnings"
     PRODUCT_LAUNCH = "product_launch"
@@ -116,3 +124,19 @@ class PriceSnapshot(Base):
     offset_days: Mapped[int] = mapped_column(Integer, nullable=False)
 
     signal: Mapped["Signal"] = relationship(back_populates="price_snapshots")
+
+
+class ExtractionAttempt(Base):
+    __tablename__ = "extraction_attempts"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    event_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("events.id"), nullable=False)
+    outcome: Mapped[AttemptOutcome] = mapped_column(
+        Enum(AttemptOutcome, values_callable=lambda obj: [e.value for e in obj]), nullable=False
+    )
+    ticker_proposed: Mapped[str | None] = mapped_column(String(16))
+    signal_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("signals.id"), nullable=True
+    )
+    cost_usd: Mapped[Decimal] = mapped_column(Numeric(10, 6), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
