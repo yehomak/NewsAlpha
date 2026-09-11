@@ -102,6 +102,7 @@ async def resolve_tickers(state: SignalState) -> dict:  # type: ignore[type-arg]
         )
         return {
             "ticker": None,
+            "ticker_proposed": proposal.ticker,
             "total_cost_usd": float(state["total_cost_usd"] + float(cost)),
             "error": f"ticker '{proposal.ticker}' not in signal universe",
         }
@@ -109,5 +110,6 @@ async def resolve_tickers(state: SignalState) -> dict:  # type: ignore[type-arg]
     log.info("resolve_tickers.done", ticker=validated, event_id=state["event_id"])
     return {
         "ticker": validated,
+        "ticker_proposed": proposal.ticker,
         "total_cost_usd": float(state["total_cost_usd"] + float(cost)),
     }

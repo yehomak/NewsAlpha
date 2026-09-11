@@ -39,11 +39,19 @@ async def generate_signal(state: SignalState) -> dict:  # type: ignore[type-arg]
         response = await client.messages.create(
             model=_MODEL,
             max_tokens=512,
-            system=(
-                "You are a quantitative financial analyst. Analyze news articles and determine "
-                "their likely short-term impact on the mentioned stock's price direction. "
-                "Be objective and evidence-based. Confidence should reflect genuine uncertainty."
-            ),
+            system=[
+                {
+                    "type": "text",
+                    "text": (
+                        "You are a quantitative financial analyst. "
+                        "Analyze news articles and determine "
+                        "their likely short-term impact on the mentioned stock's price direction. "
+                        "Be objective and evidence-based. "
+                        "Confidence should reflect genuine uncertainty."
+                    ),
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
             tools=[
                 {
                     "name": "output",

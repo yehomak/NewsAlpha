@@ -6,8 +6,12 @@ from sqlalchemy import case, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.ingestion.pipeline as ingestion_pipeline
-from app.db.models import EvalResult, Event, Signal
+from app.db.models import EvalResult, Event, ExtractionAttempt, Signal
 from app.db.session import get_session
+
+# LLM spend from rejected/truncated calls before extraction_attempts existed (Sep 7-11).
+# Derived from Anthropic API export ($3.57 total) minus tracked signals.cost_usd ($1.794).
+_UNTRACKED_HISTORICAL_USD = 1.776
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -154,12 +158,26 @@ async def cost_stats(
     days: int = Query(default=30, ge=1, le=365),
     session: AsyncSession = Depends(get_session),
 ) -> CostStats:
-    total_cost = await session.scalar(select(func.sum(Signal.cost_usd)))
-    signal_count = int(await session.scalar(select(func.count()).select_from(Signal)) or 0)
-    avg_cost = await session.scalar(select(func.avg(Signal.cost_usd)))
-
+    # Cost source strategy: extraction_attempts (Sep 11+) captures full spend including
+    # rejections. For historical days before the table existed, fall back to signals.cost_usd.
+    # Per-day: prefer attempts rows; fill missing days from signals.
     cutoff = datetime.now(UTC) - timedelta(days=days)
-    daily_rows = (
+
+    # Days that have extraction_attempts data
+    attempt_rows = (
+        await session.execute(
+            select(
+                func.date_trunc(text("'day'"), ExtractionAttempt.created_at).label("day"),
+                func.sum(ExtractionAttempt.cost_usd).label("cost_usd"),
+            )
+            .where(ExtractionAttempt.created_at >= cutoff)
+            .group_by(func.date_trunc(text("'day'"), ExtractionAttempt.created_at))
+        )
+    ).all()
+    attempt_days: set[date] = {row.day.date() for row in attempt_rows}
+
+    # Historical days only (signals table, excluding days already covered by attempts)
+    signal_rows = (
         await session.execute(
             select(
                 func.date_trunc(text("'day'"), Signal.created_at).label("day"),
@@ -168,21 +186,34 @@ async def cost_stats(
             )
             .where(Signal.created_at >= cutoff)
             .group_by(func.date_trunc(text("'day'"), Signal.created_at))
-            .order_by(func.date_trunc(text("'day'"), Signal.created_at).asc())
         )
     ).all()
 
+    sig_by_day: dict[date, tuple[float, int]] = {
+        row.day.date(): (float(row.cost_usd), int(row.signal_count)) for row in signal_rows
+    }
+
+    # Merge: attempts days take priority; historical days fill the gaps
+    by_day_merged: dict[date, tuple[float, int]] = {}
+    for row in attempt_rows:
+        d = row.day.date()
+        sig_count = sig_by_day.get(d, (0, 0))[1]
+        by_day_merged[d] = (float(row.cost_usd), sig_count)
+    for d, (cost, count) in sig_by_day.items():
+        if d not in attempt_days:
+            by_day_merged[d] = (cost, count)
+
+    total_cost = sum(c for c, _ in by_day_merged.values()) + _UNTRACKED_HISTORICAL_USD
+    signal_count = int(await session.scalar(select(func.count()).select_from(Signal)) or 0)
+    avg_cost = round(total_cost / signal_count, 6) if signal_count > 0 else None
+
     return CostStats(
-        total_cost_usd=round(float(total_cost or 0), 6),
-        avg_cost_per_signal=round(float(avg_cost), 6) if avg_cost is not None else None,
+        total_cost_usd=round(total_cost, 6),
+        avg_cost_per_signal=avg_cost,
         signal_count=signal_count,
         by_day=[
-            CostDay(
-                date=row.day.date(),
-                cost_usd=round(float(row.cost_usd), 6),
-                signal_count=int(row.signal_count),
-            )
-            for row in daily_rows
+            CostDay(date=d, cost_usd=round(cost, 6), signal_count=count)
+            for d, (cost, count) in sorted(by_day_merged.items())
         ],
     )
 
