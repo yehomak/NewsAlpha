@@ -36,9 +36,7 @@ def _fetch_close(ticker: str, target_date: date, backward: bool = False) -> Deci
     return Decimal(str(round(close, 4)))
 
 
-async def fetch_price(
-    ticker: str, target_date: date, backward: bool = False
-) -> Decimal | None:
+async def fetch_price(ticker: str, target_date: date, backward: bool = False) -> Decimal | None:
     """Async wrapper around the blocking yfinance download."""
     async with _SEMAPHORE:
         loop = asyncio.get_event_loop()

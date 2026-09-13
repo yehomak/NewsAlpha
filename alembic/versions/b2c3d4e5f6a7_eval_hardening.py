@@ -20,9 +20,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "ALTER TABLE eval_results ADD COLUMN abnormal_return_pct DOUBLE PRECISION"
-    )
+    op.execute("ALTER TABLE eval_results ADD COLUMN abnormal_return_pct DOUBLE PRECISION")
     # Deduplicate existing rows before adding the unique constraint
     op.execute("""
         DELETE FROM price_snapshots a
