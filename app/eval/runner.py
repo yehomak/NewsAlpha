@@ -69,7 +69,7 @@ async def _fetch_all_prices(ticker: str, t0: datetime) -> dict[int, Decimal | No
     }
     results = await asyncio.gather(*tasks.values(), return_exceptions=True)
     return {
-        offset: (None if isinstance(price, Exception) else price)
+        offset: (None if isinstance(price, BaseException) else price)
         for offset, price in zip(tasks.keys(), results, strict=True)
     }
 
