@@ -6,7 +6,7 @@ This is a full end-to-end answer to that question, built and measured in product
 
 ---
 
-## The Problem
+## 🎯 The Problem
 
 Financial news creates noisy, high-volume signal. The conventional wisdom is split: either "the market is efficient and you can't extract alpha from public news," or "sentiment analysis works" — but almost nobody builds a system that rigorously measures both the prediction *and* the outcome at scale.
 
@@ -16,7 +16,7 @@ The two failure modes:
 
 ---
 
-## What We Built
+## ⚙️ What We Built
 
 An automated pipeline that:
 
@@ -28,42 +28,50 @@ An automated pipeline that:
 
 The key design choice: **signals are locked before the T+5 price is ever fetched**. The pipeline is forward-only by construction — no look-ahead bias possible.
 
-### Pipeline
+### 🔄 Pipeline
 
 ```mermaid
 flowchart TD
-    A[News Sources\nAlpaca · Yahoo RSS · CNBC · NewsData] --> B[Ingest\nevery 30 min]
+    classDef ingest fill:#0D47A1,color:#fff,stroke:#0D47A1
+    classDef dedup fill:#4527A0,color:#fff,stroke:#4527A0
+    classDef skip fill:#37474F,color:#bbb,stroke:#37474F
+    classDef llm fill:#BF360C,color:#fff,stroke:#BF360C
+    classDef store fill:#004D40,color:#fff,stroke:#004D40
+    classDef eval fill:#1B5E20,color:#fff,stroke:#1B5E20
+    classDef out fill:#01579B,color:#fff,stroke:#01579B
 
-    B --> C{URL hash\ndedup}
-    C -->|seen| Z1[skip]
-    C -->|new| D{Time-domain\ndedup\nsame source + ticker\n≤4h window}
-    D -->|duplicate| Z2[increment coverage_count]
-    D -->|unique| E{pgvector\nsemantic dedup\ncosine > 0.95}
-    E -->|similar| Z3[dedup_skipped=true]
-    E -->|distinct| F[(events table)]
+    A[News Sources\nAlpaca · Yahoo RSS · CNBC · NewsData]:::ingest --> B[Ingest\nevery 30 min]:::ingest
 
-    F --> G[Pipeline\nevery 30 min]
-    G --> H{Pre-LLM filter\nuniverse keyword match}
-    H -->|no match| Z4[skip — free]
-    H -->|match| I[Ticker resolver\nAlpaca hint OR Haiku → universe gate]
-    I -->|rejected| Z5[extraction_attempt\noutcome=rejected]
-    I -->|accepted| J[Haiku reasoning\ncache_control ephemeral]
-    J -->|truncated| Z6[extraction_attempt\noutcome=truncated]
-    J -->|signal| K[(signals table\nticker · direction · confidence\nevent_type · cost_usd)]
-    K --> L[extraction_attempt\noutcome=stored]
+    B --> C{URL hash\ndedup}:::dedup
+    C -->|seen| Z1[skip]:::skip
+    C -->|new| D{Time-domain\ndedup\nsame source + ticker\n≤4h window}:::dedup
+    D -->|duplicate| Z2[increment coverage_count]:::skip
+    D -->|unique| E{pgvector\nsemantic dedup\ncosine > 0.95}:::dedup
+    E -->|similar| Z3[dedup_skipped=true]:::skip
+    E -->|distinct| F[(events table)]:::store
 
-    K --> M[Eval job\nevery 6h]
-    M -->|T+5 not elapsed| Z7[skip until ready]
-    M -->|T+5 elapsed| N[yfinance fetch\nT-2 · T-1 · T0 · T+1–T+5]
-    N --> O[(eval_results\nreturn_pct · abnormal_return · correct)]
+    F --> G[Pipeline\nevery 30 min]:::ingest
+    G --> H{Pre-LLM filter\nuniverse keyword match}:::dedup
+    H -->|no match| Z4[skip — free]:::skip
+    H -->|match| I[Ticker resolver\nAlpaca hint OR Haiku → universe gate]:::llm
+    I -->|rejected| Z5[extraction_attempt\noutcome=rejected]:::skip
+    I -->|accepted| J[Haiku reasoning\ncache_control ephemeral]:::llm
+    J -->|truncated| Z6[extraction_attempt\noutcome=truncated]:::skip
+    J -->|signal| K[(signals table\nticker · direction · confidence\nevent_type · cost_usd)]:::store
+    K --> L[extraction_attempt\noutcome=stored]:::store
 
-    K --> P[FastAPI]
+    K --> M[Eval job\nevery 6h]:::eval
+    M -->|T+5 not elapsed| Z7[skip until ready]:::skip
+    M -->|T+5 elapsed| N[yfinance fetch\nT-2 · T-1 · T0 · T+1–T+5]:::eval
+    N --> O[(eval_results\nreturn_pct · abnormal_return · correct)]:::eval
+
+    K --> P[FastAPI]:::out
     O --> P
-    P --> Q[React Dashboard]
-    P --> R[FastMCP\nClaude Desktop]
+    P --> Q[React Dashboard]:::out
+    P --> R[FastMCP\nClaude Desktop]:::out
 ```
 
-### Eval Timeline
+### ⏱️ Eval Timeline
 
 The core anti-bias guarantee, visualised:
 
@@ -92,7 +100,7 @@ The signal (direction, confidence) is written at T0 and never modified. The pric
 
 ---
 
-## Results
+## 📊 Results
 
 First eval wave landed Sep 13, 2026 — 5 days after pipeline went live.
 
@@ -124,7 +132,7 @@ Full eval wave completes Sep 18 (637 signals still in the T+5 window).
 
 ---
 
-## How It Works
+## 🧠 How It Works
 
 **LangGraph chain** — two nodes: ticker resolver (Alpaca hint fast-path, or LLM → validate against universe) and reasoning node (structured output via tool call). Every call traced in Langfuse.
 
@@ -136,13 +144,13 @@ Full eval wave completes Sep 18 (637 signals still in the T+5 window).
 
 ---
 
-## Stack
+## 🛠️ Stack
 
 FastAPI + SQLAlchemy 2.0 async + PostgreSQL 16 + pgvector · LangGraph + Claude Haiku 4.5 · Langfuse (self-hosted) · APScheduler · yfinance · React + TypeScript + Vite · FastMCP
 
 ---
 
-## Run It
+## 🚀 Run It
 
 ```bash
 git clone https://github.com/yehomak/NewsAlpha
@@ -164,7 +172,7 @@ curl localhost:8000/eval/summary
 
 ---
 
-## Dive Deeper
+## 📁 Dive Deeper
 
 - **[`docs/stages.md`](docs/stages.md)** — how the project was built stage by stage
 - **[`app/pipeline/`](app/pipeline/)** — LangGraph chain: nodes, state, runner, universe
