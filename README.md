@@ -1,132 +1,112 @@
-# butterfly-effect
+# NewsAlpha
 
-Financial news → LLM signal extraction → ground-truth accuracy measurement.
+Every day, thousands of financial news articles move stock prices. Most investors read the same headlines and form gut feelings. NewsAlpha asks a different question: **can an LLM reliably predict which direction a stock will move after a news event — and can we actually measure whether it's right?**
 
-A pipeline that ingests financial news, extracts directional stock signals via LangGraph reasoning chains, and measures whether those signals were right — at T+5 market days.
+This is a full end-to-end answer to that question, built and measured in production.
 
-## Results (live, Sep 2026)
+---
 
-**760 signals extracted · 104 evaluated · 45.2% overall directional accuracy**
+## The Problem
 
-| Segment | Signals | Accuracy | Notes |
-|---------|---------|----------|-------|
-| Bearish | 18 | **72.2%** | Strongest signal type |
-| Macro | 20 | **60.0%** | Broad market events |
-| General | 57 | **49.1%** | Near coin-flip |
-| Bullish | 45 | **33.3%** | Below random — bullish calls underperform |
-| Earnings | 19 | **15.8%** | "Buy the rumor, sell the news" inversion |
+Financial news creates noisy, high-volume signal. The conventional wisdom is split: either "the market is efficient and you can't extract alpha from public news," or "sentiment analysis works" — but almost nobody builds a system that rigorously measures both the prediction *and* the outcome at scale.
 
-Avg T+5 return: −0.36% · Avg abnormal return (vs T-2→T0 pre-drift): +0.13%
+The two failure modes:
+1. **Vibes-based evaluation** — "the model said bullish and the stock went up, seems right!" No baseline, no sample size, no segmentation.
+2. **Look-ahead bias** — accidentally using post-reaction prices as the input, making the signal look much better than it is.
 
-Cost: **$4.71 total · $0.0062/signal** (Claude Haiku 4.5)
+---
 
-More signals evaluated daily as T+5 windows close. Full wave completes Sep 18.
+## What We Built
 
-## What it does
+An automated pipeline that:
+
+1. **Ingests** financial news continuously from 4 sources (Alpaca, Yahoo Finance RSS, CNBC RSS, NewsData.io)
+2. **Deduplicates** at three layers — URL hash, time-domain wire-service suppression, and pgvector semantic similarity (so the same story from 5 outlets counts once)
+3. **Extracts signals** via a LangGraph reasoning chain: pre-filter (no LLM cost if the article doesn't mention a tracked company) → ticker resolution against a curated 100-stock universe → Claude Haiku reasoning → structured output (direction, confidence, event type)
+4. **Measures ground truth** — 5 calendar days later, fetches closing prices from yfinance and asks: was the directional call correct?
+5. **Tracks everything** — every LLM call (including rejections), every dollar spent, every price point from T-2 to T+5 per signal
+
+The key design choice: signals are locked before the T+5 price is ever fetched. The pipeline is forward-only by construction — no look-ahead bias possible.
+
+---
+
+## Results
+
+First eval wave landed Sep 13, 2026 — 5 days after pipeline went live.
+
+**760 signals extracted · 104 evaluated · 45.2% overall accuracy**
+
+| Segment | Accuracy | Signal |
+|---------|----------|--------|
+| Bearish calls | **72.2%** | Real — model catches downside catalysts |
+| Macro events | **60.0%** | Market-wide news reads well |
+| General news | 49.1% | Near coin-flip |
+| Bullish calls | 33.3% | Below random — positive news already priced in |
+| Earnings | **15.8%** | Classic "buy the rumor, sell the news" inversion |
+
+The bearish accuracy at 72% with n=18 is the most interesting early result — it suggests the model is meaningfully better at identifying downside risk than upside. The earnings inversion (15.8%) is a textbook "sell the news" effect, worth inverting as a strategy.
+
+Avg abnormal return (signal return minus pre-event T-2→T0 drift): **+0.13%** — the signal adds marginal positive value above trend.
+
+Cost: **$4.71 total · $0.0062 per signal** using Claude Haiku 4.5 with prompt caching.
+
+Full eval wave completes Sep 18 (637 signals still in the T+5 window).
+
+---
+
+## How It Works
 
 ```
-News sources (Alpaca, RSS, NewsData)
-  → ingest + 3-layer dedup (URL hash · time-domain · pgvector semantic)
-    → LangGraph chain (pre-filter → ticker resolve → Haiku reasoning)
-      → signals table (ticker, direction, confidence, event_type, cost)
-        → T+5 eval harness (yfinance · 8-point price curve · abnormal return)
-          → FastAPI endpoints · React dashboard · FastMCP tools
+News (Alpaca · RSS · NewsData)
+  → 3-layer dedup (URL hash · time-domain · pgvector cosine)
+    → pre-LLM keyword filter (~40% of events dropped free)
+      → LangGraph chain (ticker resolve → Haiku reason)
+        → signals table
+          → T+5 yfinance fetch → eval_results
+            → FastAPI + React dashboard + FastMCP
 ```
 
-## Architecture
+**LangGraph chain** — two nodes: ticker resolver (Alpaca hint fast-path, or LLM → validate against universe) and reasoning node (structured output via tool call). Every call traced in Langfuse.
 
-```mermaid
-graph LR
-    A[News Sources\nAlpaca · RSS · NewsData] --> B[Ingest\nAPScheduler 1h]
-    B --> C{3-layer dedup\nURL hash · time · pgvector}
-    C -->|unique| D[events table]
-    C -->|duplicate| E[processed=true\ndedup_skipped=true]
-    D --> F[LangGraph Pipeline\nAPScheduler 30min]
-    F --> G[Pre-LLM filter\nuniverse keyword match]
-    G -->|no match| H[skip]
-    G -->|match| I[Ticker resolver\nAlpaca hint · LLM · universe gate]
-    I --> J[Haiku reasoning\ncache_control ephemeral]
-    J --> K[signals table]
-    J --> L[extraction_attempts\nall LLM spend tracked]
-    K --> M[T+5 eval job\nAPScheduler 6h]
-    M --> N[yfinance\nT-2·T-1·T0·T+1..T+5]
-    N --> O[eval_results\nreturn_pct · abnormal_return · correct]
-    K --> P[FastAPI\n/signals · /eval · /stats]
-    P --> Q[React Dashboard]
-    P --> R[FastMCP\nClaude Desktop]
-```
+**Universe gate** — 100 curated tickers (S&P 500 megacaps, no utilities/REITs/commodity E&P). Signals outside the universe are rejected — no hallucinated tickers reach the DB.
+
+**Eval design** — T0 is anchored to market open for after-hours news; T+5 uses the 8-point price curve (T-2 through T+5) stored per signal. Abnormal return subtracts the T-2→T0 pre-drift to isolate the news effect.
+
+---
 
 ## Stack
 
-| Layer | Tech |
-|-------|------|
-| API | FastAPI (async) + SQLAlchemy 2.0 async + Alembic |
-| DB | PostgreSQL 16 + pgvector (semantic dedup) |
-| Pipeline | LangGraph · Claude Haiku 4.5 (`~$0.006/signal`) |
-| Embeddings | `all-MiniLM-L6-v2` — local, 384-dim, free |
-| Observability | Langfuse (self-hosted) — every LLM call traced |
-| Eval | yfinance · T-2 to T+5 price curve · abnormal return calc |
-| Scheduler | APScheduler (ingest 1h · pipeline 30min · eval 6h) |
-| Dashboard | React + TypeScript + Vite · dark terminal aesthetic |
-| MCP | FastMCP · `/signals` + `/eval/summary` as tools |
+FastAPI + SQLAlchemy 2.0 async + PostgreSQL 16 + pgvector · LangGraph + Claude Haiku 4.5 · Langfuse (self-hosted) · APScheduler · yfinance · React + TypeScript + Vite · FastMCP
 
-## Local setup
+---
+
+## Run It
 
 ```bash
 git clone https://github.com/yehomak/NewsAlpha
-cp .env.example .env        # add ANTHROPIC_API_KEY, ALPACA_API_KEY
-docker compose up           # app + postgres + langfuse
+cp .env.example .env        # ANTHROPIC_API_KEY + ALPACA_API_KEY
+docker compose up
 ```
 
-App: http://localhost:8000  
-Dashboard: http://localhost:5173  
-Langfuse: http://localhost:3000
+App → `localhost:8000` · Dashboard → `localhost:5173` · Langfuse → `localhost:3000`
 
-Trigger a pipeline run manually:
 ```bash
-curl -X POST http://localhost:8000/ingestion/trigger
-curl -X POST http://localhost:8000/signals/trigger
-curl -X POST http://localhost:8000/eval/trigger
+# Trigger manually
+curl -X POST localhost:8000/ingestion/trigger
+curl -X POST localhost:8000/signals/trigger
+curl -X POST localhost:8000/eval/trigger
+
+# Check results
+curl localhost:8000/eval/summary
 ```
 
-## Signal pipeline detail
+---
 
-**Pre-LLM filter** — scans headline + body for any of 100 curated ticker symbols or company keywords before spending tokens. Rejects ~40% of events before an LLM call.
+## Dive Deeper
 
-**Ticker resolver** — Alpaca news API provides pre-resolved ticker hints (fast path). Otherwise: Haiku proposes a ticker → validated against a 100-ticker curated universe (S&P 500 megacaps, excl. utilities/REITs/commodity E&P) → rejected if not in universe.
-
-**Reasoning node** — single Haiku call with `cache_control: ephemeral` on the system prompt (~10-20% cost reduction). Outputs: direction (bullish/bearish/neutral), confidence (0-1), event_type (earnings/product_launch/macro/general), reasoning.
-
-**Cost tracking** — every LLM call (including rejections) written to `extraction_attempts` table. No blind spots in spend reporting.
-
-## Eval design
-
-**No look-ahead bias**: signals are written before T+5 price is fetched. The pipeline is forward-only — signals never see future prices.
-
-**T0 anchor**: if news published during market hours (9:30–16:00 ET) → T0 = publish time. After-hours → T0 = next market open. This prevents inflating accuracy by using post-reaction prices as the baseline.
-
-**8-point price curve**: T-2, T-1, T0, T+1, T+2, T+3, T+4, T+5 stored in `price_snapshots`. Enables signal decay analysis and abnormal return (return minus pre-event drift).
-
-**Correctness**: bullish correct if T0→T5 return > 0; bearish if < 0; neutral if |return| ≤ 1%.
-
-## API
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /signals` | List signals; filter by ticker/direction/confidence |
-| `GET /signals/{id}` | Single signal + eval result |
-| `GET /eval/summary` | Accuracy stats with direction/event_type breakdown |
-| `GET /stats/tickers` | Per-ticker accuracy, signal count, last direction |
-| `GET /stats/costs` | Daily spend, avg cost/signal |
-| `GET /stats/pipeline` | Last run times, signals/events today |
-| `POST /*/trigger` | Manual job trigger (202) |
-
-## What the numbers mean
-
-**45.2% overall** is interesting, not discouraging. Disaggregated:
-- Bearish at 72% is a real signal — the model catches downside catalysts
-- Earnings at 16% confirms the "sell the news" effect — a signal worth inverting
-- Bullish at 33% suggests positive news is already priced in before the model sees it
-- Abnormal return +0.13% means the signal adds marginal value above the pre-trend
-
-More signal mass (target: 500+ evaluated) needed before drawing strong conclusions on per-ticker or per-confidence-band accuracy.
+- **[`docs/stages.md`](docs/stages.md)** — how the project was built stage by stage
+- **[`app/pipeline/`](app/pipeline/)** — LangGraph chain: nodes, state, runner, universe
+- **[`app/eval/`](app/eval/)** — pricer, T0 anchor, 8-point curve, abnormal return
+- **[`app/api/routes/`](app/api/routes/)** — FastAPI endpoints
+- **[`dashboard/src/`](dashboard/src/)** — React sections mapped to pipeline stages
+- **[`CLAUDE.md`](CLAUDE.md)** — full architecture reference
