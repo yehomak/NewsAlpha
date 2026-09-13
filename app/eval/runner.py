@@ -1,5 +1,5 @@
 import asyncio
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -29,20 +29,11 @@ def _is_correct(direction: Direction, return_pct: float) -> bool:
     return abs(return_pct) <= _NEUTRAL_BAND_PCT
 
 
-def _t5_cutoff() -> datetime:
-    """SQL-side cutoff: signals whose T+5+17h has elapsed."""
-    return datetime.now(UTC) - timedelta(days=5, hours=17)
-
-
 async def _fetch_uneval(session: Any) -> list[Signal]:
-    # Push eligibility filter to SQL — only load signals where published_at is old enough.
-    # Falls back to created_at when published_at is null (conservative: uses the later time).
-    cutoff = _t5_cutoff()
     result = await session.execute(
         select(Signal)
         .outerjoin(EvalResult, EvalResult.signal_id == Signal.id)
         .where(EvalResult.id.is_(None))
-        .where(Signal.created_at <= cutoff)
         .options(selectinload(Signal.event))
         .limit(500)
     )
