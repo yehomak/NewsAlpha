@@ -25,14 +25,16 @@ def _fetch_close(ticker: str, target_date: date, backward: bool = False) -> Deci
         hist = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=True)
         if hist.empty:
             return None
-        close = float(hist["Close"].iloc[-1])
+        # yfinance 1.7+ returns multi-level columns when downloading single ticker;
+        # .iloc[-1] is a Series — squeeze to scalar with .iloc[0]
+        close = float(hist["Close"].iloc[-1].iloc[0])
     else:
         start = target_date
         end = target_date + timedelta(days=7)
         hist = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=True)
         if hist.empty:
             return None
-        close = float(hist["Close"].iloc[0])
+        close = float(hist["Close"].iloc[0].iloc[0])
     return Decimal(str(round(close, 4)))
 
 
