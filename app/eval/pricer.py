@@ -41,9 +41,7 @@ async def fetch_price(ticker: str, target_date: date, backward: bool = False) ->
     async with _SEMAPHORE:
         loop = asyncio.get_event_loop()
         try:
-            price = await loop.run_in_executor(
-                None, _fetch_close, ticker, target_date, backward
-            )
+            price = await loop.run_in_executor(None, _fetch_close, ticker, target_date, backward)
         except Exception:
             log.exception("pricer.fetch_failed", ticker=ticker, target_date=str(target_date))
             return None

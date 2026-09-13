@@ -57,9 +57,7 @@ async def _existing_offsets(session: Any, signal_id: int) -> set[int]:
     return {row[0] for row in rows.all()}
 
 
-async def _fetch_all_prices(
-    ticker: str, t0: datetime
-) -> dict[int, Decimal | None]:
+async def _fetch_all_prices(ticker: str, t0: datetime) -> dict[int, Decimal | None]:
     """Fetch all 8 offsets concurrently."""
     tasks = {
         offset: fetch_price(
