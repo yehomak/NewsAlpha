@@ -31,6 +31,7 @@ class EvalSummary(BaseModel):
     pending: int
     accuracy_pct: float | None
     avg_return_pct: float | None
+    avg_abnormal_return_pct: float | None
     by_direction: list[DirectionBreakdown]
     by_event_type: list[EventTypeBreakdown]
     as_of: datetime
@@ -55,6 +56,7 @@ async def eval_summary(session: AsyncSession = Depends(get_session)) -> EvalSumm
 
     accuracy_pct: float | None = None
     avg_return_pct: float | None = None
+    avg_abnormal_return_pct: float | None = None
 
     if evaluated > 0:
         correct_count = (
@@ -67,6 +69,15 @@ async def eval_summary(session: AsyncSession = Depends(get_session)) -> EvalSumm
 
         avg_return = await session.scalar(select(func.avg(EvalResult.return_pct)))
         avg_return_pct = round(float(avg_return), 2) if avg_return is not None else None
+
+        avg_abnormal = await session.scalar(
+            select(func.avg(EvalResult.abnormal_return_pct)).where(
+                EvalResult.abnormal_return_pct.is_not(None)
+            )
+        )
+        avg_abnormal_return_pct = (
+            round(float(avg_abnormal), 2) if avg_abnormal is not None else None
+        )
 
     # Breakdown by direction
     dir_rows = (
@@ -129,6 +140,7 @@ async def eval_summary(session: AsyncSession = Depends(get_session)) -> EvalSumm
         pending=pending,
         accuracy_pct=accuracy_pct,
         avg_return_pct=avg_return_pct,
+        avg_abnormal_return_pct=avg_abnormal_return_pct,
         by_direction=by_direction,
         by_event_type=by_event_type,
         as_of=datetime.now(UTC),

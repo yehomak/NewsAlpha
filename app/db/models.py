@@ -14,6 +14,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -105,6 +106,7 @@ class EvalResult(Base):
     price_t0: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     price_t5: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     return_pct: Mapped[float] = mapped_column(Float, nullable=False)
+    abnormal_return_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     correct: Mapped[bool] = mapped_column(Boolean, nullable=False)
     evaluated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -115,6 +117,9 @@ class EvalResult(Base):
 
 class PriceSnapshot(Base):
     __tablename__ = "price_snapshots"
+    __table_args__ = (
+        UniqueConstraint("signal_id", "offset_days", name="uq_price_snapshot_signal_offset"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     signal_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("signals.id"), nullable=False)
