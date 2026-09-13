@@ -117,7 +117,9 @@ class EvalResult(Base):
 
 class PriceSnapshot(Base):
     __tablename__ = "price_snapshots"
-    __table_args__ = (UniqueConstraint("signal_id", "offset_days", name="uq_price_snapshot_signal_offset"),)
+    __table_args__ = (
+        UniqueConstraint("signal_id", "offset_days", name="uq_price_snapshot_signal_offset"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     signal_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("signals.id"), nullable=False)

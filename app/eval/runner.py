@@ -42,10 +42,7 @@ async def _fetch_uneval(session: Any) -> list[Signal]:
         select(Signal)
         .outerjoin(EvalResult, EvalResult.signal_id == Signal.id)
         .where(EvalResult.id.is_(None))
-        .where(
-            # published_at older than cutoff, or null (fall back to created_at check below)
-            (Signal.created_at <= cutoff)
-        )
+        .where(Signal.created_at <= cutoff)
         .options(selectinload(Signal.event))
         .limit(500)
     )
@@ -75,7 +72,7 @@ async def _fetch_all_prices(
     results = await asyncio.gather(*tasks.values(), return_exceptions=True)
     return {
         offset: (None if isinstance(price, Exception) else price)
-        for offset, price in zip(tasks.keys(), results)
+        for offset, price in zip(tasks.keys(), results, strict=True)
     }
 
 

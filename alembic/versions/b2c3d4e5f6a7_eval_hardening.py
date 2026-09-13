@@ -12,7 +12,6 @@ Changes:
 from collections.abc import Sequence
 
 from alembic import op
-import sqlalchemy as sa
 
 revision: str = "b2c3d4e5f6a7"
 down_revision: str | None = "a1b2c3d4e5f6"
@@ -21,9 +20,8 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "eval_results",
-        sa.Column("abnormal_return_pct", sa.Float(), nullable=True),
+    op.execute(
+        "ALTER TABLE eval_results ADD COLUMN abnormal_return_pct DOUBLE PRECISION"
     )
     # Deduplicate existing rows before adding the unique constraint
     op.execute("""
@@ -42,4 +40,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_constraint("uq_price_snapshot_signal_offset", "price_snapshots", type_="unique")
-    op.drop_column("eval_results", "abnormal_return_pct")
+    op.execute("ALTER TABLE eval_results DROP COLUMN abnormal_return_pct")
