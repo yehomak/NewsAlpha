@@ -26,7 +26,69 @@ An automated pipeline that:
 4. **Measures ground truth** — 5 calendar days later, fetches closing prices from yfinance and asks: was the directional call correct?
 5. **Tracks everything** — every LLM call (including rejections), every dollar spent, every price point from T-2 to T+5 per signal
 
-The key design choice: signals are locked before the T+5 price is ever fetched. The pipeline is forward-only by construction — no look-ahead bias possible.
+The key design choice: **signals are locked before the T+5 price is ever fetched**. The pipeline is forward-only by construction — no look-ahead bias possible.
+
+### Pipeline
+
+```mermaid
+flowchart TD
+    A[News Sources\nAlpaca · Yahoo RSS · CNBC · NewsData] --> B[Ingest\nevery 30 min]
+
+    B --> C{URL hash\ndedup}
+    C -->|seen| Z1[skip]
+    C -->|new| D{Time-domain\ndedup\nsame source + ticker\n≤4h window}
+    D -->|duplicate| Z2[increment coverage_count]
+    D -->|unique| E{pgvector\nsemantic dedup\ncosine > 0.95}
+    E -->|similar| Z3[dedup_skipped=true]
+    E -->|distinct| F[(events table)]
+
+    F --> G[Pipeline\nevery 30 min]
+    G --> H{Pre-LLM filter\nuniverse keyword match}
+    H -->|no match| Z4[skip — free]
+    H -->|match| I[Ticker resolver\nAlpaca hint OR Haiku → universe gate]
+    I -->|rejected| Z5[extraction_attempt\noutcome=rejected]
+    I -->|accepted| J[Haiku reasoning\ncache_control ephemeral]
+    J -->|truncated| Z6[extraction_attempt\noutcome=truncated]
+    J -->|signal| K[(signals table\nticker · direction · confidence\nevent_type · cost_usd)]
+    K --> L[extraction_attempt\noutcome=stored]
+
+    K --> M[Eval job\nevery 6h]
+    M -->|T+5 not elapsed| Z7[skip until ready]
+    M -->|T+5 elapsed| N[yfinance fetch\nT-2 · T-1 · T0 · T+1–T+5]
+    N --> O[(eval_results\nreturn_pct · abnormal_return · correct)]
+
+    K --> P[FastAPI]
+    O --> P
+    P --> Q[React Dashboard]
+    P --> R[FastMCP\nClaude Desktop]
+```
+
+### Eval Timeline
+
+The core anti-bias guarantee, visualised:
+
+```mermaid
+timeline
+    title Signal lifecycle — no look-ahead bias
+    T-2 : Pre-event baseline price fetched
+        : (retroactively, at eval time)
+    T-1 : Pre-event price fetched
+        : (retroactively, at eval time)
+    T0  : News published
+        : Signal LOCKED in DB
+        : direction · confidence · event_type
+        : T0 price fetched at eval time
+    T+1 : Price snapshot
+    T+2 : Price snapshot
+    T+3 : Price snapshot
+    T+4 : Price snapshot
+    T+5 : Final price fetched
+        : return_pct computed
+        : correct flag set
+        : abnormal_return = return − pre-drift
+```
+
+The signal (direction, confidence) is written at T0 and never modified. The price is fetched days later. The two never touch until evaluation — that's the guarantee.
 
 ---
 
@@ -36,15 +98,23 @@ First eval wave landed Sep 13, 2026 — 5 days after pipeline went live.
 
 **760 signals extracted · 104 evaluated · 45.2% overall accuracy**
 
-| Segment | Accuracy | Signal |
-|---------|----------|--------|
-| Bearish calls | **72.2%** | Real — model catches downside catalysts |
-| Macro events | **60.0%** | Market-wide news reads well |
-| General news | 49.1% | Near coin-flip |
-| Bullish calls | 33.3% | Below random — positive news already priced in |
-| Earnings | **15.8%** | Classic "buy the rumor, sell the news" inversion |
+```mermaid
+xychart-beta
+    title "Directional accuracy by segment (%)"
+    x-axis ["Bearish", "Macro", "General", "Neutral", "Bullish", "Earnings"]
+    y-axis "Accuracy %" 0 --> 100
+    bar [72.2, 60.0, 49.1, 46.3, 33.3, 15.8]
+```
 
-The bearish accuracy at 72% with n=18 is the most interesting early result — it suggests the model is meaningfully better at identifying downside risk than upside. The earnings inversion (15.8%) is a textbook "sell the news" effect, worth inverting as a strategy.
+| Segment | n | Accuracy | Signal |
+|---------|---|----------|--------|
+| Bearish calls | 18 | **72.2%** | Real — model catches downside catalysts |
+| Macro events | 20 | **60.0%** | Market-wide news reads well |
+| General news | 57 | 49.1% | Near coin-flip |
+| Bullish calls | 45 | 33.3% | Below random — positive news already priced in |
+| Earnings | 19 | **15.8%** | Classic "buy the rumor, sell the news" inversion |
+
+The bearish accuracy at 72% with n=18 is the most interesting early result — the model is meaningfully better at identifying downside risk than upside. The earnings inversion (15.8%) is a textbook "sell the news" effect — worth inverting as a strategy signal rather than discarding.
 
 Avg abnormal return (signal return minus pre-event T-2→T0 drift): **+0.13%** — the signal adds marginal positive value above trend.
 
@@ -56,21 +126,13 @@ Full eval wave completes Sep 18 (637 signals still in the T+5 window).
 
 ## How It Works
 
-```
-News (Alpaca · RSS · NewsData)
-  → 3-layer dedup (URL hash · time-domain · pgvector cosine)
-    → pre-LLM keyword filter (~40% of events dropped free)
-      → LangGraph chain (ticker resolve → Haiku reason)
-        → signals table
-          → T+5 yfinance fetch → eval_results
-            → FastAPI + React dashboard + FastMCP
-```
-
 **LangGraph chain** — two nodes: ticker resolver (Alpaca hint fast-path, or LLM → validate against universe) and reasoning node (structured output via tool call). Every call traced in Langfuse.
 
 **Universe gate** — 100 curated tickers (S&P 500 megacaps, no utilities/REITs/commodity E&P). Signals outside the universe are rejected — no hallucinated tickers reach the DB.
 
-**Eval design** — T0 is anchored to market open for after-hours news; T+5 uses the 8-point price curve (T-2 through T+5) stored per signal. Abnormal return subtracts the T-2→T0 pre-drift to isolate the news effect.
+**Cost tracking** — every LLM call writes to `extraction_attempts`, including rejections. Nothing is invisible in the spend report.
+
+**Abnormal return** — T0→T5 raw return minus the T-2→T0 pre-event drift. Isolates the news effect from pre-existing momentum.
 
 ---
 
