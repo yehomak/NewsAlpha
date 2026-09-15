@@ -6,6 +6,7 @@ import {
   fetchTickers,
   fetchEvalSummary,
   fetchSignals,
+  fetchAnalysis,
 } from "./api";
 import type {
   PipelineStats,
@@ -14,11 +15,13 @@ import type {
   TickerStats,
   EvalSummary,
   Signal,
+  AnalysisData,
 } from "./api";
 import { IngestionSection } from "./sections/IngestionSection";
 import { ExtractionFunnel } from "./sections/ExtractionFunnel";
 import { SignalPortfolio } from "./sections/SignalPortfolio";
 import { GroundTruth } from "./sections/GroundTruth";
+import { SignalQuality } from "./sections/SignalQuality";
 import { CostEfficiency } from "./sections/CostEfficiency";
 
 type Theme = "dark" | "light";
@@ -45,6 +48,7 @@ export default function App() {
   const [tickers, setTickers] = useState<TickerStats[] | null>(null);
   const [evalSummary, setEvalSummary] = useState<EvalSummary | null>(null);
   const [signals, setSignals] = useState<Signal[] | null>(null);
+  const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -59,14 +63,16 @@ export default function App() {
       fetchTickers(),
       fetchEvalSummary(),
       fetchSignals(200),
+      fetchAnalysis(),
     ])
-      .then(([p, e, c, t, ev, s]) => {
+      .then(([p, e, c, t, ev, s, an]) => {
         setPipeline(p);
         setEvents(e);
         setCosts(c);
         setTickers(t);
         setEvalSummary(ev);
         setSignals(s);
+        setAnalysis(an);
       })
       .catch((err: Error) => setError(err.message));
   }, []);
@@ -96,6 +102,7 @@ export default function App() {
         <ExtractionFunnel events={events} pipeline={pipeline} costs={costs} signals={signals} />
         <SignalPortfolio signals={signals} tickers={tickers} />
         <GroundTruth evalSummary={evalSummary} />
+        <SignalQuality analysis={analysis} />
         <CostEfficiency costs={costs} />
       </main>
     </div>

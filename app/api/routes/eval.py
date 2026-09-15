@@ -5,8 +5,15 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import EvalResult, Signal
+from app.db.models import EvalResult, PriceSnapshot, Signal
 from app.db.session import get_session
+from app.eval.analysis import (
+    HorizonPoint,
+    SignalRow,
+    multi_horizon_accuracy,
+    pearson_ic,
+    profit_factor,
+)
 from app.eval.runner import run_eval
 
 router = APIRouter(prefix="/eval", tags=["eval"])
@@ -34,6 +41,21 @@ class EvalSummary(BaseModel):
     avg_abnormal_return_pct: float | None
     by_direction: list[DirectionBreakdown]
     by_event_type: list[EventTypeBreakdown]
+    as_of: datetime
+
+
+class HorizonPointOut(BaseModel):
+    offset: int
+    accuracy_pct: float | None
+    n: int
+
+
+class AnalysisResponse(BaseModel):
+    ic: float | None
+    ic_n: int
+    profit_factor: float | None
+    horizon: list[HorizonPointOut]
+    evaluated: int
     as_of: datetime
 
 
@@ -143,5 +165,70 @@ async def eval_summary(session: AsyncSession = Depends(get_session)) -> EvalSumm
         avg_abnormal_return_pct=avg_abnormal_return_pct,
         by_direction=by_direction,
         by_event_type=by_event_type,
+        as_of=datetime.now(UTC),
+    )
+
+
+@router.get("/analysis", response_model=AnalysisResponse)
+async def eval_analysis(session: AsyncSession = Depends(get_session)) -> AnalysisResponse:
+    eval_rows = (
+        await session.execute(
+            select(
+                Signal.id,
+                Signal.direction,
+                EvalResult.return_pct,
+                EvalResult.correct,
+                EvalResult.price_t0,
+            ).join(EvalResult, EvalResult.signal_id == Signal.id)
+        )
+    ).all()
+
+    if not eval_rows:
+        return AnalysisResponse(
+            ic=None,
+            ic_n=0,
+            profit_factor=None,
+            horizon=[HorizonPointOut(offset=o, accuracy_pct=None, n=0) for o in range(1, 6)],
+            evaluated=0,
+            as_of=datetime.now(UTC),
+        )
+
+    signal_ids = [r.id for r in eval_rows]
+    snap_rows = (
+        await session.execute(
+            select(PriceSnapshot.signal_id, PriceSnapshot.offset_days, PriceSnapshot.price)
+            .where(PriceSnapshot.signal_id.in_(signal_ids))
+            .where(PriceSnapshot.offset_days.in_([1, 2, 3, 4, 5]))
+        )
+    ).all()
+
+    snaps: dict[int, dict[int, float]] = {}
+    for snap in snap_rows:
+        snaps.setdefault(snap.signal_id, {})[snap.offset_days] = float(snap.price)
+
+    rows = [
+        SignalRow(
+            direction=r.direction,
+            return_pct=r.return_pct,
+            correct=r.correct,
+            price_t0=float(r.price_t0),
+            snapshots=snaps.get(r.id, {}),
+        )
+        for r in eval_rows
+    ]
+
+    ic, ic_n = pearson_ic(rows)
+    pf = profit_factor(rows)
+    horizon_pts = multi_horizon_accuracy(rows)
+
+    return AnalysisResponse(
+        ic=ic,
+        ic_n=ic_n,
+        profit_factor=pf,
+        horizon=[
+            HorizonPointOut(offset=h.offset, accuracy_pct=h.accuracy_pct, n=h.n)
+            for h in horizon_pts
+        ],
+        evaluated=len(eval_rows),
         as_of=datetime.now(UTC),
     )
