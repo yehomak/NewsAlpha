@@ -89,11 +89,6 @@ export function SignalQuality({ analysis }: Props) {
     n: h.n,
   }));
 
-  const pfData = [
-    { label: "Avg win", value: analysis.profit_factor != null && analysis.profit_factor > 0 ? analysis.profit_factor : null },
-    { label: "Avg loss", value: -1 },
-  ];
-
   const hasHorizon = horizonData.some(d => d.accuracy !== null);
 
   return (

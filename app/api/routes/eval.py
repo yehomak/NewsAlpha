@@ -1,8 +1,8 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import Integer, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import EvalResult, PriceSnapshot, Signal
@@ -32,6 +32,13 @@ class EventTypeBreakdown(BaseModel):
     accuracy_pct: float
 
 
+class DayBreakdown(BaseModel):
+    date: date
+    evaluated: int
+    correct: int
+    accuracy_pct: float | None
+
+
 class EvalSummary(BaseModel):
     evaluated: int
     pending: int
@@ -40,6 +47,7 @@ class EvalSummary(BaseModel):
     avg_abnormal_return_pct: float | None
     by_direction: list[DirectionBreakdown]
     by_event_type: list[EventTypeBreakdown]
+    by_day: list[DayBreakdown]
     as_of: datetime
 
 
@@ -156,6 +164,29 @@ async def eval_summary(session: AsyncSession = Depends(get_session)) -> EvalSumm
         for et, v in et_map.items()
     ]
 
+    # Breakdown by eval day
+    day_rows = (
+        await session.execute(
+            select(
+                func.date(EvalResult.evaluated_at).label("eval_date"),
+                func.count().label("total"),
+                func.sum(cast(EvalResult.correct, Integer)).label("correct_sum"),
+            )
+            .group_by(func.date(EvalResult.evaluated_at))
+            .order_by(func.date(EvalResult.evaluated_at))
+        )
+    ).all()
+
+    by_day = [
+        DayBreakdown(
+            date=row.eval_date,
+            evaluated=row.total,
+            correct=row.correct_sum or 0,
+            accuracy_pct=round((row.correct_sum or 0) / row.total * 100, 1) if row.total else None,
+        )
+        for row in day_rows
+    ]
+
     return EvalSummary(
         evaluated=evaluated,
         pending=pending,
@@ -164,6 +195,7 @@ async def eval_summary(session: AsyncSession = Depends(get_session)) -> EvalSumm
         avg_abnormal_return_pct=avg_abnormal_return_pct,
         by_direction=by_direction,
         by_event_type=by_event_type,
+        by_day=by_day,
         as_of=datetime.now(UTC),
     )
 

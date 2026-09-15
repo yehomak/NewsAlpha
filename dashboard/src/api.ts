@@ -69,13 +69,22 @@ export interface EventTypeBreakdown {
   accuracy_pct: number;
 }
 
+export interface DayBreakdown {
+  date: string;
+  evaluated: number;
+  correct: number;
+  accuracy_pct: number | null;
+}
+
 export interface EvalSummary {
   evaluated: number;
   pending: number;
   accuracy_pct: number | null;
   avg_return_pct: number | null;
+  avg_abnormal_return_pct: number | null;
   by_direction: DirectionBreakdown[];
   by_event_type: EventTypeBreakdown[];
+  by_day: DayBreakdown[];
   as_of: string;
 }
 
