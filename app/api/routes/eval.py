@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import EvalResult, PriceSnapshot, Signal
 from app.db.session import get_session
 from app.eval.analysis import (
-    HorizonPoint,
     SignalRow,
     multi_horizon_accuracy,
     pearson_ic,
