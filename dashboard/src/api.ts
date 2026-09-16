@@ -69,13 +69,22 @@ export interface EventTypeBreakdown {
   accuracy_pct: number;
 }
 
+export interface DayBreakdown {
+  date: string;
+  evaluated: number;
+  correct: number;
+  accuracy_pct: number | null;
+}
+
 export interface EvalSummary {
   evaluated: number;
   pending: number;
   accuracy_pct: number | null;
   avg_return_pct: number | null;
+  avg_abnormal_return_pct: number | null;
   by_direction: DirectionBreakdown[];
   by_event_type: EventTypeBreakdown[];
+  by_day: DayBreakdown[];
   as_of: string;
 }
 
@@ -94,6 +103,21 @@ export interface Signal {
   correct: boolean | null;
 }
 
+export interface HorizonPoint {
+  offset: number;
+  accuracy_pct: number | null;
+  n: number;
+}
+
+export interface AnalysisData {
+  ic: number | null;
+  ic_n: number;
+  profit_factor: number | null;
+  horizon: HorizonPoint[];
+  evaluated: number;
+  as_of: string;
+}
+
 // --- fetchers ---
 
 export const fetchPipeline = () => get<PipelineStats>("/stats/pipeline");
@@ -106,3 +130,4 @@ export const fetchSignals = (limit = 50) =>
 export const fetchSignalsForTicker = (ticker: string, limit = 100) =>
   get<Signal[]>(`/signals?ticker=${encodeURIComponent(ticker)}&limit=${limit}`);
 export const fetchAllSignals = () => get<Signal[]>("/signals?limit=500");
+export const fetchAnalysis = () => get<AnalysisData>("/eval/analysis");
