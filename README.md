@@ -18,33 +18,33 @@ The two failure modes:
 
 ## 📊 Results
 
-First eval wave landed Sep 13, 2026 — 5 days after pipeline went live.
-
-**760 signals extracted · 104 evaluated · 45.2% overall accuracy**
+First full eval wave: **Sep 8–17, 2026** · **656 signals evaluated** at T+5 market close.
 
 ```mermaid
 xychart-beta
     title "Directional accuracy by segment (%)"
-    x-axis ["Bearish", "Macro", "General", "Neutral", "Bullish", "Earnings"]
+    x-axis ["Product launch", "Bearish", "Macro", "Bullish", "General", "Earnings"]
     y-axis "Accuracy %" 0 --> 100
-    bar [72.2, 60.0, 49.1, 46.3, 33.3, 15.8]
+    bar [61.0, 54.2, 45.3, 48.7, 36.2, 33.3]
 ```
 
-| Segment | n | Accuracy | Signal |
-|---------|---|----------|--------|
-| Bearish calls | 18 | **72.2%** | Real — model catches downside catalysts |
-| Macro events | 20 | **60.0%** | Market-wide news reads well |
-| General news | 57 | 49.1% | Near coin-flip |
-| Bullish calls | 45 | 33.3% | Below random — positive news already priced in |
-| Earnings | 19 | **15.8%** | Classic "buy the rumor, sell the news" inversion |
+| Segment | n | Accuracy | Read |
+|---------|---|----------|------|
+| Product launch | 118 | **61.0%** | Discrete, unambiguous — market hadn't priced it |
+| Bearish | 120 | **54.2%** | Model reads downside catalysts better than upside |
+| Macro | 106 | 45.3% | Noise zone — market-wide events too diffuse |
+| Bullish | 312 | 48.7% | Near coin-flip — positive sentiment already priced in |
+| General | 348 | 36.2% | Anti-signal territory |
+| Earnings | 84 | **33.3%** | Strong anti-signal — flip it for ~67% ("sell the news") |
+| Neutral | 224 | 25.4% | Expected — LLM struggles to call flat correctly |
 
-The bearish accuracy at 72% with n=18 is the most interesting early result — the model is meaningfully better at identifying downside risk than upside. The earnings inversion (15.8%) is a textbook "sell the news" effect — worth inverting as a strategy signal rather than discarding.
+Overall accuracy is **41.8%** — below random. But segmented, the picture is more useful: product launches have a real edge, earnings signals should be inverted, and bearish calls outperform bullish by 5.5 percentage points.
 
-Avg abnormal return (signal return minus pre-event T-2→T0 drift): **+0.13%** — the signal adds marginal positive value above trend.
+Information coefficient (IC): **0.035** — weak positive directional correlation (n=432 directional signals). Profit factor: **1.06** — dragged down by the general/earnings buckets; product_launch + bearish alone would show a much stronger ratio.
 
-Cost: **$4.71 total · $0.0062 per signal** using Claude Haiku 4.5 with prompt caching.
+Avg abnormal return: **+0.97%** (T0→T5 return minus T-2→T0 pre-event drift).
 
-Full eval wave completes Sep 18 (637 signals still in the T+5 window).
+Cost: **$0.0062 per signal** using Claude Haiku 4.5 with prompt caching.
 
 ---
 
